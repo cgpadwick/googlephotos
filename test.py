@@ -65,7 +65,7 @@ while True:
         },
     )
 
-    if idx == 5:
+    if idx == 2:
         break
 
     response_json = response.json()
@@ -93,7 +93,8 @@ print(photos_df.head())
 print(photos_df.columns)
 print(photos_df.loc[0, :])
 
-image_data_response = authed_session.get(photos_df.baseUrl[1])
+baseUrl = f'{photos_df.baseUrl[1]}=w{photos_df.width[1]}-h{photos_df.height[1]}'
+image_data_response = authed_session.get(baseUrl)
 
 image = Image.open(io.BytesIO(image_data_response.content))
 image.show()
