@@ -130,10 +130,12 @@ def download_images(photos_df, outdir):
         None
     """
 
+    supported_types = ['.jpg', '.jpeg', '.png']
     for _, row in tqdm(photos_df.iterrows()):
-        image_data_response = authed_session.get(row.baseUrl)
-        image = Image.open(io.BytesIO(image_data_response.content))
-        image.save(os.path.join(outdir / Path(f"{row.filename}.jpg")))
+        if Path(row.filename).suffix in supported_types:
+            image_data_response = authed_session.get(row.baseUrl)
+            image = Image.open(io.BytesIO(image_data_response.content))
+            image.save(os.path.join(outdir / Path(f"{row.filename}")))
 
 
 if __name__ == "__main__":
