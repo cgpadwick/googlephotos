@@ -2,7 +2,11 @@ import argparse
 import io
 import os
 
+import visionmodel
+
+from dotenv import load_dotenv
 from matplotlib import pyplot as plt
+from openai import OpenAI
 
 from pathlib import Path
 from PIL import Image
@@ -11,7 +15,9 @@ from transformers import VisionEncoderDecoderModel, ViTImageProcessor, AutoToken
 import torch
 
 
-def caption_images(image_dir, output_dir, force_cpu=False, showimages=False):
+def caption_images(
+    image_dir, output_dir, model_str="openai", device="gpu", showimages=False
+):
     """
     Captions images in the specified image directory.
 
@@ -22,46 +28,21 @@ def caption_images(image_dir, output_dir, force_cpu=False, showimages=False):
         None
     """
 
-    model = VisionEncoderDecoderModel.from_pretrained(
-        "nlpconnect/vit-gpt2-image-captioning"
-    )
-    feature_extractor = ViTImageProcessor.from_pretrained(
-        "nlpconnect/vit-gpt2-image-captioning"
-    )
-    tokenizer = AutoTokenizer.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
-
-    max_length = 128
-    num_beams = 4
-    gen_kwargs = {"max_length": max_length, "num_beams": num_beams}
-
-    if force_cpu:
-        device = "cpu"
-    else:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model.to(device)
+    factory = visionmodel.VisionModelFactory()
+    model = factory.create(model_str=model_str, device=device)
 
     for image_file in tqdm(os.listdir(image_dir)):
         image = Image.open(image_dir / Path(image_file))
-        if image.mode != "RGB":
-            image = image.convert(mode="RGB")
 
-        pixel_values = feature_extractor(
-            images=[image], return_tensors="pt"
-        ).pixel_values
-        pixel_values = pixel_values.to(device)
+        caption = model.predict([image])
 
-        output_ids = model.generate(pixel_values, **gen_kwargs)
-
-        preds = tokenizer.batch_decode(output_ids, skip_special_tokens=True)
-        preds = [pred.strip() for pred in preds]
-
+        plt.figure(figsize=(20, 20))
         plt.imshow(image)
-        plt.title(preds[0])
+        plt.title(caption)
         if showimages:
             plt.show()
 
         plt.savefig(output_dir / Path(image_file))
-        del pixel_values
 
 
 if __name__ == "__main__":
@@ -73,17 +54,23 @@ if __name__ == "__main__":
         help="location where the images will be read from",
     )
     parser.add_argument(
+        "--model",
+        required=True,
+        type=str,
+        help="the model to use for image captioning.  Use openai or a huggingface model id, e.g. nlpconnect/vit-gpt2-image-captioning",
+    )
+    parser.add_argument(
         "--outputdir",
         required=True,
         type=Path,
         help="location where the images and captions will be saved",
     )
     parser.add_argument(
-        "--forcecpu",
+        "--device",
         required=False,
-        type=int,
-        default=None,
-        help="force the predicition to occur on the CPU",
+        type=str,
+        default="cuda",
+        help="device to use for local prediction",
     )
     parser.add_argument(
         "--show",
@@ -103,7 +90,8 @@ if __name__ == "__main__":
 
     caption_images(
         args.imagedir,
-        force_cpu=args.forcecpu,
+        args.outputdir,
+        model_str=args.model,
+        device=args.device,
         showimages=args.show,
-        output_dir=args.outputdir,
     )
