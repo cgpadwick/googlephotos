@@ -1,5 +1,5 @@
 import argparse
-import io
+import textwrap
 import os
 
 import visionmodel
@@ -13,6 +13,21 @@ from PIL import Image
 from tqdm import tqdm
 from transformers import VisionEncoderDecoderModel, ViTImageProcessor, AutoTokenizer
 import torch
+
+
+def format_caption(caption):
+    """
+    Line wraps the caption.
+
+    Args:
+        caption: A string representing the caption.
+
+    Returns:
+        A string representing the formatted caption.
+    """
+
+    wrapped = textwrap.wrap(caption, width=200)
+    return "\n".join(wrapped)
 
 
 def caption_images(
@@ -38,11 +53,12 @@ def caption_images(
 
         plt.figure(figsize=(20, 20))
         plt.imshow(image)
-        plt.title(caption)
+        plt.title(format_caption(caption[0]))
         if showimages:
             plt.show()
 
         plt.savefig(output_dir / Path(image_file))
+        plt.close()
 
 
 if __name__ == "__main__":

@@ -125,7 +125,7 @@ class OpenaiVisionModel:
                 raise ValueError("All images must be of type PIL.Image")
 
             image_data = pil_image_to_base64(image)
-            #import pdb; pdb.set_trace()
+            # import pdb; pdb.set_trace()
 
             headers = {
                 "Content-Type": "application/json",
@@ -144,7 +144,6 @@ class OpenaiVisionModel:
                                 "image_url": {
                                     "url": f"data:image/jpeg;base64,{image_data}"
                                 },
-                                "detail": f"{detail}",
                             },
                         ],
                     }
