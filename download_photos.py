@@ -68,24 +68,6 @@ def retrieve_media_items(authed_session, maxpages=None):
             json={
                 "pageSize": 100,
                 "pageToken": nextPageToken,
-                "filters": {
-                    "dateFilter": {
-                        "ranges": [
-                            {
-                                "startDate": {
-                                    "year": 1980,
-                                    "month": 1,
-                                    "day": 1,
-                                },
-                                "endDate": {
-                                    "year": 2024,
-                                    "month": 3,
-                                    "day": 1,
-                                },
-                            }
-                        ]
-                    }
-                },
             },
         )
 
@@ -130,7 +112,7 @@ def download_images(photos_df, outdir):
         None
     """
 
-    supported_types = ['.jpg', '.jpeg', '.png']
+    supported_types = [".jpg", ".jpeg", ".png"]
     for _, row in tqdm(photos_df.iterrows()):
         if Path(row.filename).suffix in supported_types:
             image_data_response = authed_session.get(row.baseUrl)
@@ -142,9 +124,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--outdir",
-        required=True,
+        required=False,
         type=Path,
         help="location where the images will be downloaded",
+    )
+    parser.add_argument(
+        "--save-filename",
+        required=True,
+        type=Path,
+        help="location where the media items json file will be saved",
     )
     parser.add_argument(
         "--maxpages",
@@ -153,12 +141,25 @@ if __name__ == "__main__":
         default=None,
         help="max number of pages that will be retrieved from google photos api",
     )
+    parser.add_argument(
+        "--download",
+        required=False,
+        action="store_true",
+        help="photos will be downloaded from google photos api",
+    )
 
     args = parser.parse_args()
 
-    if not args.outdir.exists():
-        raise ValueError(f"Invalid path specified: {args.outdir}")
+    if args.download:
+        if not args.outdir:
+            raise ValueError("Must provide --outdir if --download is True")
+        else:
+            if not args.outdir.exists():
+                raise ValueError(f"Invalid path specified: {args.outdir}")
 
     authed_session = get_auth_session()
     photos_df = retrieve_media_items(authed_session, maxpages=args.maxpages)
-    download_images(photos_df, args.outdir)
+    if args.download:
+        download_images(photos_df, args.outdir)
+
+    photos_df.to_json(args.save_filename, orient="records", lines=True, indent=4)

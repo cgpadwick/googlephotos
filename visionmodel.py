@@ -96,14 +96,37 @@ class OpenaiVisionModel:
 
     def predict(self, images, detail="low"):
         """
-        Perform image captioning on the input images using the provided model and tokenizer.
+        Predict captions for a list of images.
 
         Args:
-            images (List[Image]): A list of PIL.Image objects representing the input images.
-            **kwargs: Additional keyword arguments to customize the image captioning process, such as "max_length" and "num_beams".
+            self: The object instance.
+            images: A list of images for which to generate captions.
+            detail: The level of detail in the captions. Defaults to "low".
 
         Returns:
-            List[str]: A list of generated captions for the input images.
+            captions: A list of captions generated for the input images.
+        """
+
+        captions = []
+        for image in images:
+            if isinstance(image, Image.Image):
+                caption = self._predict_from_pil_image(image, detail)
+            elif isinstance(image, str):
+                caption = self._predict_from_url(image)
+            else:
+                raise ValueError("Invalid image type")
+
+            captions.append(caption)
+
+        return captions
+
+    def _predict_from_pil_image(self, pil_image, detail="low"):
+        """
+        Predicts the content of the given PIL image using OpenAI's GPT-4 vision model.
+
+        :param pil_image: A PIL image object
+        :param detail: (optional) The level of detail for the prediction, defaults to "low"
+        :return: A string containing the predicted content of the image
         """
 
         def pil_image_to_base64(pil_image):
@@ -120,43 +143,83 @@ class OpenaiVisionModel:
         captions = []
         # OpenAI only supports 1 image at a time.  If you pass it multiple images, it will use all of them
         # to generate a single caption.
-        for image in images:
-            if not isinstance(image, Image.Image):
-                raise ValueError("All images must be of type PIL.Image")
+        if not isinstance(pil_image, Image.Image):
+            raise ValueError("All images must be of type PIL.Image")
 
-            image_data = pil_image_to_base64(image)
-            # import pdb; pdb.set_trace()
+        image_data = pil_image_to_base64(pil_image)
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
+        }
 
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
-            }
-
-            payload = {
-                "model": "gpt-4-vision-preview",
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": "What’s in this image?"},
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:image/jpeg;base64,{image_data}"
-                                },
+        payload = {
+            "model": "gpt-4-vision-preview",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "What’s in this image?"},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{image_data}"
                             },
-                        ],
-                    }
-                ],
-                "max_tokens": 300,
-            }
+                        },
+                    ],
+                }
+            ],
+            "max_tokens": 300,
+        }
 
-            response = requests.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers=headers,
-                json=payload,
-            )
-            response.raise_for_status()
-            captions.append(response.json()["choices"][0]["message"]["content"].strip())
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            json=payload,
+        )
+        response.raise_for_status()
+        caption = response.json()["choices"][0]["message"]["content"].strip()
 
-        return captions
+        return caption
+
+    def _predict_from_url(self, image_url):
+        """
+        A function to predict captions for images from the given URL.
+
+        :param image_url: The URL of the image to be processed
+        :return: caption generated for the image.
+        """
+
+        # OpenAI only supports 1 image at a time.  If you pass it multiple images, it will use all of them
+        # to generate a single caption.
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
+        }
+
+        payload = {
+            "model": "gpt-4-vision-preview",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "What’s in this image?"},
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": image_url},
+                        },
+                    ],
+                }
+            ],
+            "max_tokens": 300,
+        }
+
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            json=payload,
+        )
+        response.raise_for_status()
+        caption = response.json()["choices"][0]["message"]["content"].strip()
+
+        return caption

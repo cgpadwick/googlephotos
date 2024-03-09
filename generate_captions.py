@@ -54,10 +54,10 @@ def caption_images(
         plt.figure(figsize=(20, 20))
         plt.imshow(image)
         plt.title(format_caption(caption[0]))
+        plt.savefig(output_dir / Path(image_file))
         if showimages:
             plt.show()
 
-        plt.savefig(output_dir / Path(image_file))
         plt.close()
 
 
