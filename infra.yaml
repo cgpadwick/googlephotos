@@ -1,0 +1,5 @@
+project_id: cgp-project
+topics:
+  cgp-test-topic:
+    - cgp-test-subscription
+
