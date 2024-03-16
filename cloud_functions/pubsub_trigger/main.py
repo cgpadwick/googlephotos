@@ -1,4 +1,5 @@
 import base64
+import json
 import os
 from google.cloud import pubsub_v1
 
@@ -13,13 +14,13 @@ def hello_pubsub(event, context):
         None
     """
 
-    message = base64.b64decode(event["data"]).decode("utf-8")
+    data = base64.b64decode(event["data"]).decode("utf-8")
+    message = json.loads(data)
+    baseurl = message.get("baseurl")
 
     publisher = pubsub_v1.PublisherClient()
     topic_name = f"projects/cgp-project/topics/cgp-processed-topic"
-    msg = f"Received message: {message}"
+    msg = f"Received message: {message}. baseurl: {baseurl}"
     data = msg.encode("utf-8")
     future = publisher.publish(topic_name, data=data)
     future.result()
-    print(msg)
-    print(os.environ['OPENAI_API_KEY'])
