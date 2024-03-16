@@ -1,4 +1,5 @@
 import base64
+import os
 from google.cloud import pubsub_v1
 
 
@@ -21,3 +22,4 @@ def hello_pubsub(event, context):
     future = publisher.publish(topic_name, data=data)
     future.result()
     print(msg)
+    print(os.environ['OPENAI_API_KEY'])
