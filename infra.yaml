@@ -1,5 +1,20 @@
 project_id: cgp-project
 topics:
-  cgp-test-topic:
-    - cgp-test-subscription
-
+  cgp-target-topic:
+    - cgp-target-subscription
+  cgp-processed-topic:
+    - cgp-processed-subscription
+  cgp-error-topic:
+    - cgp-error-subscription
+functions:
+  pubsub_function:
+    source_url: "https://source.developers.google.com/projects/cgp-project/repos/github_cgpadwick_googlephotos/moveable-aliases/main/paths/cloud_functions/pubsub_trigger/"
+    max_instances: 10
+    location: us-central1
+    runtime: python39
+    entry_point: hello_pubsub
+    trigger_topic: cgp-target-topic
+    publish_topic: cgp-processed-topic
+    error_topic: cgp-error-topic
+    env_vars: ["OPENAI_API_KEY"]
+    error_subscription: cgp-error-subscription
