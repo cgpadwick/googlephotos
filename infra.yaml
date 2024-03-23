@@ -1,11 +1,17 @@
 project_id: cgp-project
 topics:
-  cgp-target-topic:
-    - cgp-target-subscription
-  cgp-processed-topic:
-    - cgp-processed-subscription
-  cgp-error-topic:
-    - cgp-error-subscription
+  target_topic:
+    name: cgp-target-topic
+    subscribers:
+      - cgp-target-subscription
+  processed_topic:
+    name: cgp-processed-topic
+    subscribers:
+      - cgp-processed-subscription
+  error_topic:
+    name: cgp-error-topic
+    subscribers:
+      - cgp-error-subscription
 functions:
   pubsub_function:
     source_url: "https://source.developers.google.com/projects/cgp-project/repos/github_cgpadwick_googlephotos/moveable-aliases/main/paths/cloud_functions/pubsub_trigger/"

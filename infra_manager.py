@@ -127,9 +127,9 @@ def create_topics_and_subscribers_from_yaml(yaml_file):
     subscriber = pubsub_v1.SubscriberClient()
 
     # Loop through topics
-    for topic_name, subscribers in data.get("topics", {}).items():
+    for topic, attr in data.get("topics", {}).items():
         # Create or get topic
-        topic_path = publisher.topic_path(project_id, topic_name)
+        topic_path = publisher.topic_path(project_id, attr["name"])
 
         try:
             topic = publisher.get_topic(request={"topic": topic_path})
@@ -143,7 +143,7 @@ def create_topics_and_subscribers_from_yaml(yaml_file):
             print(f"Topic already exists: {topic.name}")
 
         # Loop through subscribers
-        for subscriber_name in subscribers:
+        for subscriber_name in attr["subscribers"]:
             # Create or get subscription
             subscription_path = subscriber.subscription_path(
                 project_id, subscriber_name
@@ -162,10 +162,6 @@ def create_topics_and_subscribers_from_yaml(yaml_file):
                 print(f"Subscription created: {subscription.name}")
             else:
                 print(f"Subscription already exists: {subscription.name}")
-
-
-import yaml
-from google.cloud import pubsub_v1
 
 
 def destroy_topics_and_subscribers_from_yaml(yaml_file):
@@ -190,9 +186,9 @@ def destroy_topics_and_subscribers_from_yaml(yaml_file):
     subscriber = pubsub_v1.SubscriberClient()
 
     # Loop through topics
-    for topic_name, subscribers in data.get("topics", {}).items():
+    for topic, attr in data.get("topics", {}).items():
         # Delete topic
-        topic_path = publisher.topic_path(project_id, topic_name)
+        topic_path = publisher.topic_path(project_id, attr["name"])
         try:
             topic = publisher.get_topic(request={"topic": topic_path})
         except Exception as e:
@@ -205,7 +201,7 @@ def destroy_topics_and_subscribers_from_yaml(yaml_file):
             print(f"Topic does not exist: {topic_path}")
 
         # Loop through subscribers
-        for subscriber_name in subscribers:
+        for subscriber_name in attr["subscribers"]:
             # Delete subscription
             subscription_path = subscriber.subscription_path(
                 project_id, subscriber_name
