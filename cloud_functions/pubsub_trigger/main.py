@@ -46,6 +46,25 @@ def predict_from_url(image_url):
     return caption
 
 
+def publish_message(project_id, topic_name, message):
+    """
+    Publishes a message to the specified Pub/Sub topic.
+
+    Args:
+        project_id (str): The ID of the GCP project.
+        topic_name (str): The name of the Pub/Sub topic.
+        message (str): The message to publish.
+
+    Returns:
+        None
+    """
+    publisher = pubsub_v1.PublisherClient()
+    topic_path = publisher.topic_path(project_id, topic_name)
+    data = message.encode("utf-8")
+    future = publisher.publish(topic_path, data=data)
+    future.result()
+
+
 def hello_pubsub(event, context):
     """
     A function to handle a Pub/Sub event. It decodes the message from the event, sets up the Pub/Sub publisher client, and publishes the message to a specified topic.
@@ -56,15 +75,15 @@ def hello_pubsub(event, context):
         None
     """
 
-    data = base64.b64decode(event["data"]).decode("utf-8")
-    message = json.loads(data)
-    baseurl = message.get("baseurl")
-    caption = predict_from_url(baseurl)
+    try:
+        data = base64.b64decode(event["data"]).decode("utf-8")
+        message = json.loads(data)
+        baseurl = message.get("baseurl")
+        caption = predict_from_url(baseurl)
+        msg = f"Received message: {message}. caption: {caption}"
+        publish_message(message["project_id"], message["processed_topic"], msg)
 
-    publisher = pubsub_v1.PublisherClient()
-    topic_name = f"projects/cgp-project/topics/cgp-processed-topic"
-    msg = f"Received message: {message}. caption: {caption}"
-    data = msg.encode("utf-8")
-    future = publisher.publish(topic_name, data=data)
-    future.result()
-    print(f'caption was: {caption}')
+    except Exception as e:
+        msg = f"Received message: {message}.  Error: {e}"
+        publish_message(message["project_id"], message["error_topic"], msg)
+        print(msg)
