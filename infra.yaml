@@ -24,3 +24,10 @@ functions:
     error_topic: cgp-error-topic
     env_vars: ["OPENAI_API_KEY"]
     error_subscription: cgp-error-subscription
+accounts:
+  service_account:
+    name: testserviceaccount@cgp-project.iam.gserviceaccount.com
+    path_to_credentials: _secrets_/cgp-project-c6daf9dd8063.json
+buckets:
+  main_bucket:
+    name: cgp-photos-export

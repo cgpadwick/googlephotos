@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import os
 from pathlib import Path
 import yaml
+from google.oauth2 import service_account
 from google.cloud import pubsub_v1
 from google.cloud import functions_v1
 
@@ -67,8 +68,14 @@ def create_cloud_functions_from_yaml(config_file):
     with open(config_file, "r") as file:
         data = yaml.safe_load(file)
 
+    target_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
+    creds_path = data["accounts"]["service_account"]["path_to_credentials"]
+    source_credentials = service_account.Credentials.from_service_account_file(
+        creds_path, scopes=target_scopes
+    )
+
     # Initialize the Cloud Functions client
-    client = functions_v1.CloudFunctionsServiceClient()
+    client = functions_v1.CloudFunctionsServiceClient(credentials=source_credentials)
 
     for function_name, attr in data.get("functions", {}).items():
 
