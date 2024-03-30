@@ -31,3 +31,5 @@ accounts:
 buckets:
   main_bucket:
     name: cgp-photos-export
+firestore:
+  database_name: photos
