@@ -14,6 +14,118 @@ from google.cloud import pubsub_v1
 from google.cloud import functions_v1
 
 
+class DatabaseManager(object):
+    def __init__(self, config_file):
+        """
+        Initialize the class with the provided configuration file.
+
+        Parameters:
+            config_file (str): The path to the configuration file.
+
+        Returns:
+            None
+        """
+        self.config_file = config_file
+        self.config = self.load_config()
+
+        creds_path = self.config["accounts"]["service_account"]["path_to_credentials"]
+        creds = credentials.Certificate(creds_path)
+        app = firebase_admin.initialize_app(creds)
+        self.db = firestore.Client(database=self.config["firestore"]["database_name"])
+
+    def load_config(self):
+        """
+        Load the configuration file and return the loaded configuration.
+
+        Parameters:
+            self (object): The instance of the class.
+
+        Returns:
+            dict: The loaded configuration.
+        """
+        with open(self.config_file, "r") as file:
+            config = yaml.safe_load(file)
+        return config
+
+    def display_menu(self):
+        """
+        Display the infrastructure manager menu options to the user.
+        """
+        print("\n\nDatabase Manager Menu")
+        print("\n")
+        print("1. List Collections")
+        print("2. Delete a specific collection")
+        print("3. Delete all collections from database")
+        print("4. Exit")
+        print("\n")
+
+    def _get_collection(self, collection_name):
+        """Return a collection from the Firestore database."""
+        collections = self.db.collections()
+        for collection in collections:
+            if collection.id == collection_name:
+                return collection
+        return None
+
+    def clear_firestore_collections(self):
+        """
+        Method to clear all collections in Firestore.
+        """
+        for collection in self.db.collections():
+            print(
+                f'deleting {collection.id} from {self.config["firestore"]["database_name"]}'
+            )
+            self.db.recursive_delete(collection)
+
+    def list_collections(self):
+        """
+        Method to list all collections in Firestore.
+        """
+        print("\n\nCollections:")
+        for collection in self.db.collections():
+            print(f"{collection.id}")
+        print("\n\n")
+
+    def delete_collection(self):
+        """
+        Delete a collection by name after user input.
+        If the collection exists, deletes it and prints a success message.
+        """
+
+        print("\n\nDelete collection:\n\n")
+        collection_name = input("Enter the name of the collection to delete: ")
+        collection_ref = self._get_collection(collection_name)
+        if not collection_ref:
+            print(f"Collection '{collection_name}' does not exist.")
+            return
+
+        # Delete the collection
+        self.db.recursive_delete(collection_ref)
+
+        print(f"Collection '{collection_name}' deleted successfully.")
+
+    def run(self):
+        """
+        Run the main loop for the program, displaying a menu and handling user input
+        to perform various actions.
+        """
+
+        while True:
+            self.display_menu()
+            choice = input("Enter your choice: ")
+            if choice == "1":
+                self.list_collections()
+            elif choice == "2":
+                self.delete_collection()
+            elif choice == "3":
+                self.clear_firestore_collections()
+            elif choice == "4":
+                print("Exiting")
+                break
+            else:
+                print("Invalid choice. Please try again.")
+
+
 class InfraManager(object):
     def __init__(self, config_file):
         """
@@ -27,6 +139,7 @@ class InfraManager(object):
         """
         self.config_file = config_file
         self.config = self.load_config()
+        self.database_manager = DatabaseManager(self.config_file)
 
     def load_config(self):
         """
@@ -50,7 +163,8 @@ class InfraManager(object):
         print("\n")
         print("1. Build infra")
         print("2. Teardown infra")
-        print("3. Exit")
+        print("3. Manage database")
+        print("4. Exit")
         print("\n")
 
     def _get_function_name(self, function_name, project_id, location):
@@ -84,22 +198,6 @@ class InfraManager(object):
             return True
         except Exception:
             return False
-
-    def clear_firestore_collections(self):
-        """
-        Method to clear all collections in Firestore.
-        """
-
-        creds_path = self.config["accounts"]["service_account"]["path_to_credentials"]
-        creds = credentials.Certificate(creds_path)
-        app = firebase_admin.initialize_app(creds)
-        db = firestore.Client(database=self.config["firestore"]["database_name"])
-
-        for collection in db.collections():
-            print(
-                f'deleting {collection.id} from {self.config["firestore"]["database_name"]}'
-            )
-            db.recursive_delete(collection)
 
     def delete_cloud_functions(self):
         """
@@ -306,6 +404,8 @@ class InfraManager(object):
                 self.delete_cloud_functions()
                 self.destroy_topics_and_subscribers()
             elif choice == "3":
+                self.database_manager.run()
+            elif choice == "4":
                 print("Exiting")
                 break
             else:
