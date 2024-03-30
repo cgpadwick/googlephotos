@@ -9,7 +9,7 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
 
-from photosapp import Customer
+import photosapp
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -45,21 +45,15 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    with open(args.configfile, "r") as file:
-        config = yaml.safe_load(file)
-
-    customer = Customer(args.name, args.email, args.phone, args.bucket)
+    customer = photosapp.Customer(args.name, args.email, args.phone, args.bucket)
 
     try:
-        # Firestore setup.
-        creds_path = config["accounts"]["service_account"]["path_to_credentials"]
-        creds = credentials.Certificate(creds_path)
-        app = firebase_admin.initialize_app(creds)
-        db = firestore.Client(database=config["firestore"]["database_name"])
+        db_helper = photosapp.DatabaseHelper(args.configfile)
+        if db_helper.check_unique_email(customer.email):
+            db_helper.insert_customer(customer)
+            print(f"Added customer: {customer}")
+        else:
+            print(f"Customer {customer.email} already exists")
 
-        doc_ref = db.collection("customers").document(str(customer.uuid))
-        doc_ref.set(customer.to_dict())
-
-        print(f"Added customer: {customer}")
     except Exception as e:
         print(e)
