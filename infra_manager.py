@@ -1,232 +1,315 @@
 import argparse
-from dotenv import load_dotenv
 import os
 from pathlib import Path
 import yaml
+
+from dotenv import load_dotenv
+
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
+
 from google.oauth2 import service_account
 from google.cloud import pubsub_v1
 from google.cloud import functions_v1
 
 
-def display_menu():
-    print("\n\nInfra Manager Menu")
-    print("\n")
-    print("1. Build infra")
-    print("2. Teardown infra")
-    print("3. Exit")
-    print("\n")
+class InfraManager(object):
+    def __init__(self, config_file):
+        """
+        Initialize the class with the provided configuration file.
 
+        Parameters:
+            config_file (str): The path to the configuration file.
 
-def get_function_name(function_name, project_id, location):
-    name = f"projects/{project_id}/locations/{location}/functions/{function_name}"
-    return name
+        Returns:
+            None
+        """
+        self.config_file = config_file
+        self.config = self.load_config()
 
+    def load_config(self):
+        """
+        Load the configuration file and return the loaded configuration.
 
-def func_exists(name):
-    client = functions_v1.CloudFunctionsServiceClient()
-    try:
-        client.get_function(name=name)
-        return True
-    except Exception:
-        return False
+        Parameters:
+            self (object): The instance of the class.
 
+        Returns:
+            dict: The loaded configuration.
+        """
+        with open(self.config_file, "r") as file:
+            config = yaml.safe_load(file)
+        return config
 
-def delete_cloud_functions_from_yaml(config_file):
-    """
-    Load the Cloud Function configuration from the YAML file
-    Initialize the Cloud Functions client
-    Delete the Cloud Function
-    Print a success message after deleting the Cloud Function
-    """
-    # Load the Cloud Function configuration from the YAML file
-    with open(config_file, "r") as file:
-        data = yaml.safe_load(file)
+    def display_menu(self):
+        """
+        Display the infrastructure manager menu options to the user.
+        """
+        print("\n\nInfra Manager Menu")
+        print("\n")
+        print("1. Build infra")
+        print("2. Teardown infra")
+        print("3. Exit")
+        print("\n")
 
-    # Initialize the Cloud Functions client
-    client = functions_v1.CloudFunctionsServiceClient()
+    def _get_function_name(self, function_name, project_id, location):
+        """
+        Retrieves the full function name based on the provided function_name, project_id, and location.
 
-    for function_name, attr in data.get("functions", {}).items():
+        Args:
+            function_name (str): The name of the function.
+            project_id (str): The ID of the project.
+            location (str): The location of the function.
 
-        name = get_function_name(function_name, data["project_id"], attr["location"])
-        if not func_exists(name):
-            print("no function exists with name: " + function_name)
-            continue
+        Returns:
+            str: The full function name.
+        """
+        name = f"projects/{project_id}/locations/{location}/functions/{function_name}"
+        return name
 
-        # Delete the Cloud Function
-        client.delete_function(name=name)
-        print(f"Cloud Function '{function_name}' deleted successfully.")
+    def _func_exists(self, name):
+        """
+        A function that checks if a function exists in the Cloud Functions service.
 
+        Parameters:
+        name (str): The name of the function to check.
 
-def create_cloud_functions_from_yaml(config_file):
-    """
-    Load the Cloud Function configuration from the YAML file
-    """
+        Returns:
+        bool: True if the function exists, False otherwise.
+        """
+        client = functions_v1.CloudFunctionsServiceClient()
+        try:
+            client.get_function(name=name)
+            return True
+        except Exception:
+            return False
 
-    load_dotenv()
+    def clear_firestore_collections(self):
+        """
+        Method to clear all collections in Firestore.
+        """
 
-    # Load the Cloud Function configuration from the YAML file
-    with open(config_file, "r") as file:
-        data = yaml.safe_load(file)
+        creds_path = self.config["accounts"]["service_account"]["path_to_credentials"]
+        creds = credentials.Certificate(creds_path)
+        app = firebase_admin.initialize_app(creds)
+        db = firestore.Client(database=self.config["firestore"]["database_name"])
 
-    target_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
-    creds_path = data["accounts"]["service_account"]["path_to_credentials"]
-    source_credentials = service_account.Credentials.from_service_account_file(
-        creds_path, scopes=target_scopes
-    )
+        for collection in db.collections():
+            print(
+                f'deleting {collection.id} from {self.config["firestore"]["database_name"]}'
+            )
+            db.recursive_delete(collection)
 
-    # Initialize the Cloud Functions client
-    client = functions_v1.CloudFunctionsServiceClient(credentials=source_credentials)
+    def delete_cloud_functions(self):
+        """
+        Delete cloud functions based on the configuration provided.
+        """
 
-    for function_name, attr in data.get("functions", {}).items():
+        # Initialize the Cloud Functions client
+        client = functions_v1.CloudFunctionsServiceClient()
 
-        name = get_function_name(function_name, data["project_id"], attr["location"])
+        for function_name, attr in self.config.get("functions", {}).items():
 
-        if func_exists(name):
-            print("function already exists: " + function_name)
-            continue
+            name = self._get_function_name(
+                function_name, self.config["project_id"], attr["location"]
+            )
+            if not self._func_exists(name):
+                print("no function exists with name: " + function_name)
+                continue
 
-        trigger_topic = f"projects/{data['project_id']}/topics/{attr['trigger_topic']}"
-        function = functions_v1.CloudFunction()
-        function.entry_point = attr["entry_point"]
-        function.runtime = attr["runtime"]
-        function.name = name
-        function.max_instances = attr["max_instances"]
-        function.event_trigger = functions_v1.EventTrigger()
-        function.event_trigger.event_type = "google.pubsub.topic.publish"
-        function.event_trigger.resource = trigger_topic
-        function.source_repository = functions_v1.SourceRepository()
-        function.source_repository.url = attr["source_url"]
+            # Delete the Cloud Function
+            client.delete_function(name=name)
+            print(f"Cloud Function '{function_name}' deleted successfully.")
 
-        envvars = {}
-        for var in attr["env_vars"]:
-            envvars[var] = os.getenv(var)
-        function.environment_variables = envvars
+    def create_cloud_functions(self):
+        """
+        Load the Cloud Function configuration from the YAML file
+        """
 
-        request = functions_v1.CreateFunctionRequest(
-            location=f"projects/{data['project_id']}/locations/{attr['location']}",
-            function=function,
+        load_dotenv()
+
+        target_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
+        creds_path = self.config["accounts"]["service_account"]["path_to_credentials"]
+        source_credentials = service_account.Credentials.from_service_account_file(
+            creds_path, scopes=target_scopes
         )
 
-        operation = client.create_function(request=request)
-        result = operation.result()
+        # Initialize the Cloud Functions client
+        client = functions_v1.CloudFunctionsServiceClient(
+            credentials=source_credentials
+        )
 
-        print(f"Cloud Function '{function_name}' created successfully.")
+        for function_name, attr in self.config.get("functions", {}).items():
 
-
-def create_topics_and_subscribers_from_yaml(yaml_file):
-    """
-    Create topics and subscribers from a YAML file.
-
-    Args:
-        yaml_file (str): The path to the YAML file containing the topic and subscriber information.
-
-    Returns:
-        None
-    """
-    # Load YAML file
-    with open(yaml_file, "r") as file:
-        data = yaml.safe_load(file)
-
-    project_id = data.get("project_id")
-
-    # Initialize Pub/Sub clients
-    publisher = pubsub_v1.PublisherClient()
-    subscriber = pubsub_v1.SubscriberClient()
-
-    # Loop through topics
-    for topic, attr in data.get("topics", {}).items():
-        # Create or get topic
-        topic_path = publisher.topic_path(project_id, attr["name"])
-
-        try:
-            topic = publisher.get_topic(request={"topic": topic_path})
-        except Exception as e:
-            topic = None
-
-        if not topic:
-            topic = publisher.create_topic(request={"name": topic_path})
-            print(f"Topic created: {topic.name}")
-        else:
-            print(f"Topic already exists: {topic.name}")
-
-        # Loop through subscribers
-        for subscriber_name in attr["subscribers"]:
-            # Create or get subscription
-            subscription_path = subscriber.subscription_path(
-                project_id, subscriber_name
+            name = self._get_function_name(
+                function_name, self.config["project_id"], attr["location"]
             )
-            try:
-                subscription = subscriber.get_subscription(
-                    request={"subscription": subscription_path}
-                )
-            except Exception as e:
-                subscription = None
 
-            if not subscription:
-                subscription = subscriber.create_subscription(
-                    request={"name": subscription_path, "topic": topic_path}
-                )
-                print(f"Subscription created: {subscription.name}")
-            else:
-                print(f"Subscription already exists: {subscription.name}")
+            if self._func_exists(name):
+                print("function already exists: " + function_name)
+                continue
 
-
-def destroy_topics_and_subscribers_from_yaml(yaml_file):
-    """
-    Destroy topics and subscribers from a YAML file.
-
-    Parameters:
-        yaml_file (str): The path to the YAML file containing topic and subscriber information.
-
-    Returns:
-        None
-    """
-
-    # Load YAML file
-    with open(yaml_file, "r") as file:
-        data = yaml.safe_load(file)
-
-    project_id = data.get("project_id")
-
-    # Initialize Pub/Sub clients
-    publisher = pubsub_v1.PublisherClient()
-    subscriber = pubsub_v1.SubscriberClient()
-
-    # Loop through topics
-    for topic, attr in data.get("topics", {}).items():
-        # Delete topic
-        topic_path = publisher.topic_path(project_id, attr["name"])
-        try:
-            topic = publisher.get_topic(request={"topic": topic_path})
-        except Exception as e:
-            topic = None
-
-        if topic:
-            publisher.delete_topic(request={"topic": topic_path})
-            print(f"Topic deleted: {topic_path}")
-        else:
-            print(f"Topic does not exist: {topic_path}")
-
-        # Loop through subscribers
-        for subscriber_name in attr["subscribers"]:
-            # Delete subscription
-            subscription_path = subscriber.subscription_path(
-                project_id, subscriber_name
+            trigger_topic = (
+                f"projects/{self.config['project_id']}/topics/{attr['trigger_topic']}"
             )
-            try:
-                subscription = subscriber.get_subscription(
-                    request={"subscription": subscription_path}
-                )
-            except Exception as e:
-                subscription = None
+            function = functions_v1.CloudFunction()
+            function.entry_point = attr["entry_point"]
+            function.runtime = attr["runtime"]
+            function.name = name
+            function.max_instances = attr["max_instances"]
+            function.event_trigger = functions_v1.EventTrigger()
+            function.event_trigger.event_type = "google.pubsub.topic.publish"
+            function.event_trigger.resource = trigger_topic
+            function.source_repository = functions_v1.SourceRepository()
+            function.source_repository.url = attr["source_url"]
 
-            if subscription:
-                subscriber.delete_subscription(
-                    request={"subscription": subscription_path}
-                )
-                print(f"Subscription deleted: {subscription_path}")
+            envvars = {}
+            for var in attr["env_vars"]:
+                envvars[var] = os.getenv(var)
+            function.environment_variables = envvars
+
+            request = functions_v1.CreateFunctionRequest(
+                location=f"projects/{self.config['project_id']}/locations/{attr['location']}",
+                function=function,
+            )
+
+            operation = client.create_function(request=request)
+            result = operation.result()
+
+            print(f"Cloud Function '{function_name}' created successfully.")
+
+    def create_topics_and_subscribers(self):
+        """
+        Generate topics and subscribers based on the configuration provided.
+        """
+
+        project_id = self.config.get("project_id")
+
+        # Initialize Pub/Sub clients
+        publisher = pubsub_v1.PublisherClient()
+        subscriber = pubsub_v1.SubscriberClient()
+
+        # Loop through topics
+        for topic, attr in self.config.get("topics", {}).items():
+            # Create or get topic
+            topic_path = publisher.topic_path(project_id, attr["name"])
+
+            try:
+                topic = publisher.get_topic(request={"topic": topic_path})
+            except Exception as e:
+                topic = None
+
+            if not topic:
+                topic = publisher.create_topic(request={"name": topic_path})
+                print(f"Topic created: {topic.name}")
             else:
-                print(f"Subscription does not exist: {subscription_path}")
+                print(f"Topic already exists: {topic.name}")
+
+            # Loop through subscribers
+            for subscriber_name in attr["subscribers"]:
+                # Create or get subscription
+                subscription_path = subscriber.subscription_path(
+                    project_id, subscriber_name
+                )
+                try:
+                    subscription = subscriber.get_subscription(
+                        request={"subscription": subscription_path}
+                    )
+                except Exception as e:
+                    subscription = None
+
+                if not subscription:
+                    subscription = subscriber.create_subscription(
+                        request={"name": subscription_path, "topic": topic_path}
+                    )
+                    print(f"Subscription created: {subscription.name}")
+                else:
+                    print(f"Subscription already exists: {subscription.name}")
+
+    def destroy_topics_and_subscribers(self):
+        """
+        Deletes all topics and subscribers in the Pub/Sub system.
+
+        This function iterates through all the topics and subscribers defined in the configuration
+        and deletes them one by one. It first retrieves the project ID from the configuration. Then,
+        it initializes the Pub/Sub clients for publishing and subscribing. Next, it loops through
+        each topic in the configuration and checks if it exists. If it does, it deletes the topic and
+        prints a message indicating that the topic has been deleted. If it does not exist, it prints
+        a message indicating that the topic does not exist. After that, it loops through each
+        subscriber of the topic and checks if the corresponding subscription exists. If it does,
+        it deletes the subscription and prints a message indicating that the subscription has been
+        deleted. If it does not exist, it prints a message indicating that the subscription does
+        not exist.
+
+        Parameters:
+            self (object): The instance of the current class.
+
+        Returns:
+            None
+        """
+
+        project_id = self.config.get("project_id")
+
+        # Initialize Pub/Sub clients
+        publisher = pubsub_v1.PublisherClient()
+        subscriber = pubsub_v1.SubscriberClient()
+
+        # Loop through topics
+        for topic, attr in self.config.get("topics", {}).items():
+            # Delete topic
+            topic_path = publisher.topic_path(project_id, attr["name"])
+            try:
+                topic = publisher.get_topic(request={"topic": topic_path})
+            except Exception as e:
+                topic = None
+
+            if topic:
+                publisher.delete_topic(request={"topic": topic_path})
+                print(f"Topic deleted: {topic_path}")
+            else:
+                print(f"Topic does not exist: {topic_path}")
+
+            # Loop through subscribers
+            for subscriber_name in attr["subscribers"]:
+                # Delete subscription
+                subscription_path = subscriber.subscription_path(
+                    project_id, subscriber_name
+                )
+                try:
+                    subscription = subscriber.get_subscription(
+                        request={"subscription": subscription_path}
+                    )
+                except Exception as e:
+                    subscription = None
+
+                if subscription:
+                    subscriber.delete_subscription(
+                        request={"subscription": subscription_path}
+                    )
+                    print(f"Subscription deleted: {subscription_path}")
+                else:
+                    print(f"Subscription does not exist: {subscription_path}")
+
+    def run(self):
+        """
+        Run the main loop for the program, displaying a menu and handling user input to perform various actions.
+        """
+
+        while True:
+            self.display_menu()
+            choice = input("Enter your choice: ")
+            if choice == "1":
+                self.create_topics_and_subscribers()
+                self.create_cloud_functions()
+            elif choice == "2":
+                self.delete_cloud_functions()
+                self.destroy_topics_and_subscribers()
+            elif choice == "3":
+                print("Exiting")
+                break
+            else:
+                print("Invalid choice. Please try again.")
 
 
 if __name__ == "__main__":
@@ -242,17 +325,5 @@ if __name__ == "__main__":
     if not args.configfile.exists():
         raise ValueError(f"Invalid path specified: {args.configfile}")
 
-    while True:
-        display_menu()
-        choice = input("Enter your choice: ")
-        if choice == "1":
-            create_topics_and_subscribers_from_yaml(args.configfile)
-            create_cloud_functions_from_yaml(args.configfile)
-        elif choice == "2":
-            delete_cloud_functions_from_yaml(args.configfile)
-            destroy_topics_and_subscribers_from_yaml(args.configfile)
-        elif choice == "3":
-            print("Exiting")
-            break
-        else:
-            print("Invalid choice. Please try again.")
+    manager = InfraManager(args.configfile)
+    manager.run()
