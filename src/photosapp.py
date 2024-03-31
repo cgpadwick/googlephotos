@@ -6,9 +6,73 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
 
+from google.cloud import pubsub_v1
+from google.oauth2 import service_account
+from google.cloud import storage
+
 
 CUSTOMERTABLE = "customers"
 IMAGESTABLE = "images"
+IMAGESUBTABLE = "photos"
+
+
+class PubSubHelper(object):
+    """A class to represent a PubSub object."""
+
+    def __init__(self, config_file):
+        """Initialize the PubSub object."""
+        self.config_file = config_file
+        self.config = self.load_config()
+
+        # Create the topic path
+        self.publisher = pubsub_v1.PublisherClient()
+
+    def load_config(self):
+        """Load the configuration file and return the loaded configuration."""
+        with open(self.config_file, "r") as file:
+            config = yaml.safe_load(file)
+        return config
+
+    def publish_message(self, topic_name, message):
+        """Publish a message to a topic."""
+        message_data = str(message)
+        topic_path = self.publisher.topic_path(self.config["project_id"], topic_name)
+        future = self.publisher.publish(topic_path, message_data.encode("utf-8"))
+        message_id = future.result()
+        return message_id
+
+
+class GCStoragehelper(object):
+    """A class to represent a Google Cloud Storage object."""
+
+    def __init__(self, config_file):
+        """Initialize the GCStorage object."""
+        self.config_file = config_file
+        self.config = self.load_config()
+
+        # Get the contents of the bucket.
+        creds_path = self.config["accounts"]["service_account"]["path_to_credentials"]
+        source_credentials = service_account.Credentials.from_service_account_file(
+            creds_path
+        )
+        self.storage_client = storage.Client(credentials=source_credentials)
+
+    def load_config(self):
+        """Load the configuration file and return the loaded configuration."""
+        with open(self.config_file, "r") as file:
+            config = yaml.safe_load(file)
+        return config
+
+    def get_bucket(self, bucket_name):
+        """Get the contents of a bucket."""
+        bucket = self.storage_client.get_bucket(bucket_name)
+        return bucket
+
+    def get_blobs(self, bucket_name):
+        """Get the contents of a bucket."""
+        bucket = self.storage_client.get_bucket(bucket_name)
+        blobs = bucket.list_blobs()
+        return blobs
 
 
 class DatabaseHelper(object):
@@ -29,6 +93,12 @@ class DatabaseHelper(object):
         doc_ref = self.db.collection(CUSTOMERTABLE).where("email", "==", email).limit(1)
         docs = doc_ref.get()
         return len(docs) == 0
+
+    def get_customer(self, email):
+        """Retrieve a customer in the database."""
+        doc_ref = self.db.collection(CUSTOMERTABLE).where("email", "==", email).limit(1)
+        docs = doc_ref.get()
+        return docs
 
     def insert_customer(self, customer):
         """Insert a customer into the database."""

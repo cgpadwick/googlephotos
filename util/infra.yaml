@@ -1,17 +1,11 @@
 project_id: cgp-project
 topics:
-  target_topic:
-    name: cgp-target-topic
-    subscribers:
-      - cgp-target-subscription
-  processed_topic:
-    name: cgp-processed-topic
-    subscribers:
-      - cgp-processed-subscription
-  error_topic:
-    name: cgp-error-topic
-    subscribers:
-      - cgp-error-subscription
+  caption_topic:
+    name: cgp-caption-topic
+    subscribers: []
+  ingest_topic:
+    name: cgp-ingest-topic
+    subscribers: []
 functions:
   pubsub_function:
     source_url: "https://source.developers.google.com/projects/cgp-project/repos/github_cgpadwick_googlephotos/moveable-aliases/main/paths/cloud_functions/pubsub_trigger/"
@@ -19,11 +13,16 @@ functions:
     location: us-central1
     runtime: python39
     entry_point: hello_pubsub
-    trigger_topic: cgp-target-topic
-    publish_topic: cgp-processed-topic
-    error_topic: cgp-error-topic
+    trigger_topic: cgp-caption-topic
     env_vars: ["OPENAI_API_KEY"]
-    error_subscription: cgp-error-subscription
+  ingest_function:
+    source_url: "https://source.developers.google.com/projects/cgp-project/repos/github_cgpadwick_googlephotos/moveable-aliases/main/paths/cloud_functions/ingest/"
+    max_instances: 10
+    location: us-central1
+    runtime: python39
+    entry_point: ingest_object
+    trigger_topic: cgp-ingest-topic
+    env_vars: []
 accounts:
   service_account:
     name: testserviceaccount@cgp-project.iam.gserviceaccount.com
