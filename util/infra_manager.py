@@ -1,17 +1,18 @@
 import argparse
 import os
 from pathlib import Path
+import sys
+
+sys.path.insert(0, "../src")
 import yaml
 
 from dotenv import load_dotenv
 
-import firebase_admin
-from firebase_admin import credentials
-from firebase_admin import firestore
-
 from google.oauth2 import service_account
 from google.cloud import pubsub_v1
 from google.cloud import functions_v1
+
+import photosapp
 
 
 class DatabaseManager(object):
@@ -27,11 +28,7 @@ class DatabaseManager(object):
         """
         self.config_file = config_file
         self.config = self.load_config()
-
-        creds_path = self.config["accounts"]["service_account"]["path_to_credentials"]
-        creds = credentials.Certificate(creds_path)
-        app = firebase_admin.initialize_app(creds)
-        self.db = firestore.Client(database=self.config["firestore"]["database_name"])
+        self.db_helper = photosapp.DatabaseHelper(config_file)
 
     def load_config(self):
         """
@@ -59,30 +56,18 @@ class DatabaseManager(object):
         print("4. Exit")
         print("\n")
 
-    def _get_collection(self, collection_name):
-        """Return a collection from the Firestore database."""
-        collections = self.db.collections()
-        for collection in collections:
-            if collection.id == collection_name:
-                return collection
-        return None
-
     def clear_firestore_collections(self):
         """
         Method to clear all collections in Firestore.
         """
-        for collection in self.db.collections():
-            print(
-                f'deleting {collection.id} from {self.config["firestore"]["database_name"]}'
-            )
-            self.db.recursive_delete(collection)
+        self.db_helper.clear_firestore_collections()
 
     def list_collections(self):
         """
         Method to list all collections in Firestore.
         """
         print("\n\nCollections:")
-        for collection in self.db.collections():
+        for collection in self.db_helper.get_collections():
             print(f"{collection.id}")
         print("\n\n")
 
@@ -91,18 +76,9 @@ class DatabaseManager(object):
         Delete a collection by name after user input.
         If the collection exists, deletes it and prints a success message.
         """
-
         print("\n\nDelete collection:\n\n")
         collection_name = input("Enter the name of the collection to delete: ")
-        collection_ref = self._get_collection(collection_name)
-        if not collection_ref:
-            print(f"Collection '{collection_name}' does not exist.")
-            return
-
-        # Delete the collection
-        self.db.recursive_delete(collection_ref)
-
-        print(f"Collection '{collection_name}' deleted successfully.")
+        self.db_helper.delete_collection(collection_name)
 
     def run(self):
         """
@@ -240,7 +216,7 @@ class InfraManager(object):
 
         for function_name, attr in self.config.get("functions", {}).items():
 
-            print(f'Creating function: {function_name}')
+            print(f"Creating function: {function_name}")
 
             name = self._get_function_name(
                 function_name, self.config["project_id"], attr["location"]

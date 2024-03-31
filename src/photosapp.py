@@ -88,6 +88,12 @@ class DatabaseHelper(object):
         _ = firebase_admin.initialize_app(creds)
         self.db = firestore.Client(database=self.config["firestore"]["database_name"])
 
+    def load_config(self):
+        """Load the configuration file and return the loaded configuration."""
+        with open(self.config_file, "r") as file:
+            config = yaml.safe_load(file)
+        return config
+
     def check_unique_email(self, email):
         """Check if the email is unique in the database."""
         doc_ref = self.db.collection(CUSTOMERTABLE).where("email", "==", email).limit(1)
@@ -105,11 +111,44 @@ class DatabaseHelper(object):
         doc_ref = self.db.collection(CUSTOMERTABLE).document(str(customer.uuid))
         doc_ref.set(customer.to_dict())
 
-    def load_config(self):
-        """Load the configuration file and return the loaded configuration."""
-        with open(self.config_file, "r") as file:
-            config = yaml.safe_load(file)
-        return config
+    def get_db(self):
+        """Return the database object."""
+        return self.db
+
+    def get_collection(self, collection_name):
+        """Return a collection from the Firestore database."""
+        collections = self.db.collections()
+        for collection in collections:
+            if collection.id == collection_name:
+                return collection
+        return None
+
+    def clear_firestore_collections(self):
+        """
+        Method to clear all collections in Firestore.
+        """
+        for collection in self.db.collections():
+            print(
+                f'deleting {collection.id} from {self.config["firestore"]["database_name"]}'
+            )
+            self.db.recursive_delete(collection)
+
+    def get_collections(self):
+        """
+        Method to list all collections in Firestore.
+        """
+        return self.db.collections()
+
+    def delete_collection(self, collection_name):
+        collection_ref = self.get_collection(collection_name)
+        if not collection_ref:
+            print(f"Collection '{collection_name}' does not exist.")
+            return
+
+        # Delete the collection
+        self.db.recursive_delete(collection_ref)
+
+        print(f"Collection '{collection_name}' deleted successfully.")
 
 
 class Customer(object):
