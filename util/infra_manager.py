@@ -240,6 +240,8 @@ class InfraManager(object):
 
         for function_name, attr in self.config.get("functions", {}).items():
 
+            print(f'Creating function: {function_name}')
+
             name = self._get_function_name(
                 function_name, self.config["project_id"], attr["location"]
             )
