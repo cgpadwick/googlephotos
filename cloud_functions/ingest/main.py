@@ -3,6 +3,7 @@ from io import BytesIO
 import json
 from PIL import Image
 from PIL.ExifTags import TAGS
+import traceback
 import uuid
 
 import firebase_admin
@@ -102,6 +103,7 @@ def ingest_object(event, context):
                 "message": "Failed to ingest image",
                 "user_id": message["user_id"],
                 "error": str(e),
+                "traceback": traceback.format_exc(),
                 "bucket_name": message["bucket_name"],
                 "blob_name": message["blob_name"],
                 "status": "error",
