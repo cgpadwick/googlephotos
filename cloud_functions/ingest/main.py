@@ -52,6 +52,8 @@ def insert_into_db(message, exif_data):
     _ = firebase_admin.initialize_app()
     db = firestore.Client(database_name)
 
+    log_message(data_record)
+
     doc_ref = (
         db.collection(tl_name)
         .document(user_id)
