@@ -14,6 +14,7 @@ from google.cloud import storage
 
 CUSTOMERTABLE = "customers"
 IMAGESTABLE = "images"
+IMAGESUBTABLE = "photos"
 
 
 class PubSubHelper(object):
