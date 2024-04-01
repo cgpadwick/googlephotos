@@ -1,7 +1,7 @@
 import base64
 from io import BytesIO
 import json
-from PIL import Image
+from PIL import Image, TiffImagePlugin
 from PIL.ExifTags import TAGS
 import traceback
 import uuid
@@ -11,6 +11,30 @@ from firebase_admin import firestore
 
 from google.cloud import storage
 from google.cloud import logging
+
+
+def cast(v):
+    """
+    Casts the input value v to the appropriate type if necessary.
+
+    Parameters:
+    v : Any - The input value to be casted.
+
+    Returns:
+    Any - The casted value.
+    """
+    if isinstance(v, TiffImagePlugin.IFDRational):
+        return float(v)
+    elif isinstance(v, tuple):
+        return tuple(cast(t) for t in v)
+    elif isinstance(v, bytes):
+        return v.decode(errors="replace")
+    elif isinstance(v, dict):
+        for kk, vv in v.items():
+            v[kk] = cast(vv)
+        return v
+    else:
+        return v
 
 
 def get_exif_data(blob):
@@ -26,7 +50,7 @@ def get_exif_data(blob):
             exif_info = {}
             for tag, value in exif_data.items():
                 tag_name = TAGS.get(tag, tag)
-                exif_info[tag_name] = value
+                exif_info[tag_name] = cast(value)
             return exif_info
         else:
             return {}
@@ -46,15 +70,14 @@ def insert_into_db(message, exif_data):
         "blob_name": blob_name,
         "bucket_name": bucket_name,
         "exif_data": exif_data,
-        "uuid": uuid.uuid4(),
+        "uuid": str(uuid.uuid4()),
     }
 
-    data_rec = json.dumps(data_record)
+    # Convert any integer keys to strings.
+    data_record = json.loads(json.dumps(data_record))
 
     _ = firebase_admin.initialize_app()
-    db = firestore.Client(database_name)
-
-    log_message(data_rec)
+    db = firestore.Client(database=database_name)
 
     doc_ref = (
         db.collection(tl_name)
@@ -62,7 +85,7 @@ def insert_into_db(message, exif_data):
         .collection(sl_name)
         .document(str(data_record["uuid"]))
     )
-    doc_ref.set(data_rec)
+    doc_ref.set(data_record)
 
 
 def log_message(msg_dict):
@@ -75,8 +98,8 @@ def log_message(msg_dict):
 
 def ingest_object(event, context):
     """
-    A function to ingest an object, decode the data, retrieve information from a storage bucket, 
-    extract exif data, insert data into a database, and log messages. 
+    A function to ingest an object, decode the data, retrieve information from a storage bucket,
+    extract exif data, insert data into a database, and log messages.
     It takes 'event' and 'context' as parameters.
     """
 
@@ -93,11 +116,11 @@ def ingest_object(event, context):
 
         log_message(
             {
-                "message": "Ingested image", 
+                "message": "Ingested image",
                 "user_id": message["user_id"],
                 "bucket_name": message["bucket_name"],
                 "blob_name": message["blob_name"],
-                "status": "success"
+                "status": "success",
             }
         )
 
