@@ -49,10 +49,12 @@ def insert_into_db(message, exif_data):
         "uuid": uuid.uuid4(),
     }
 
+    data_rec = json.dumps(data_record)
+
     _ = firebase_admin.initialize_app()
     db = firestore.Client(database_name)
 
-    log_message(data_record)
+    log_message(data_rec)
 
     doc_ref = (
         db.collection(tl_name)
@@ -60,7 +62,7 @@ def insert_into_db(message, exif_data):
         .collection(sl_name)
         .document(str(data_record["uuid"]))
     )
-    doc_ref.set(data_record)
+    doc_ref.set(data_rec)
 
 
 def log_message(msg_dict):
