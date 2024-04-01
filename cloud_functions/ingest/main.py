@@ -76,7 +76,9 @@ def insert_into_db(message, exif_data):
     # Convert any integer keys to strings.
     data_record = json.loads(json.dumps(data_record))
 
-    _ = firebase_admin.initialize_app()
+    if not firebase_admin._apps:
+        _ = firebase_admin.initialize_app()
+
     db = firestore.Client(database=database_name)
 
     doc_ref = (
