@@ -61,7 +61,6 @@ def insert_into_db(message, exif_data):
 
     database_name = message.get("database_name")
     tl_name = message.get("top_level_collection_name")
-    sl_name = message.get("sub_level_collection_name")
     bucket_name = message.get("bucket_name")
     blob_name = message.get("blob_name")
     user_id = message.get("user_id")
@@ -84,7 +83,6 @@ def insert_into_db(message, exif_data):
     doc_ref = (
         db.collection(tl_name)
         .document(user_id)
-        .collection(sl_name)
         .document(str(data_record["uuid"]))
     )
     doc_ref.set(data_record)

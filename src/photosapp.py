@@ -1,4 +1,5 @@
 import datetime
+import json
 import uuid
 import yaml
 
@@ -13,7 +14,6 @@ from google.cloud import storage
 
 CUSTOMERTABLE = "customers"
 IMAGESTABLE = "images"
-IMAGESUBTABLE = "photos"
 
 
 class PubSubHelper(object):
@@ -35,9 +35,9 @@ class PubSubHelper(object):
 
     def publish_message(self, topic_name, message):
         """Publish a message to a topic."""
-        message_data = str(message)
+        message_data = json.dumps(message).encode("utf-8")
         topic_path = self.publisher.topic_path(self.config["project_id"], topic_name)
-        future = self.publisher.publish(topic_path, message_data.encode("utf-8"))
+        future = self.publisher.publish(topic_path, message_data)
         message_id = future.result()
         return message_id
 
@@ -85,7 +85,8 @@ class DatabaseHelper(object):
 
         creds_path = self.config["accounts"]["service_account"]["path_to_credentials"]
         creds = credentials.Certificate(creds_path)
-        _ = firebase_admin.initialize_app(creds)
+        if not firebase_admin._apps:
+            _ = firebase_admin.initialize_app(creds)
         self.db = firestore.Client(database=self.config["firestore"]["database_name"])
 
     def load_config(self):
@@ -140,6 +141,7 @@ class DatabaseHelper(object):
         return self.db.collections()
 
     def delete_collection(self, collection_name):
+        """Delete a collection from the Firestore database."""
         collection_ref = self.get_collection(collection_name)
         if not collection_ref:
             print(f"Collection '{collection_name}' does not exist.")

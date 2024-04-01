@@ -1,6 +1,8 @@
 import argparse
+import json
 from pathlib import Path
 import sys
+
 sys.path.insert(0, "../src")
 import yaml
 
@@ -61,14 +63,14 @@ if __name__ == "__main__":
             msg = {
                 "database_name": config["firestore"]["database_name"],
                 "top_level_collection_name": photosapp.IMAGESTABLE,
-                "sub_level_collection_name": photosapp.IMAGESUBTABLE,
                 "bucket_name": customer_rec["bucket_name"],
                 "blob_name": blob.name,
                 "user_id": customer_rec["uuid"],
             }
 
             message_id = pubsub_helper.publish_message(topic_name, msg)
-            print(f"Published message {message_id}.")
+            print(f"\n\nPublished message {message_id}.")
+            print(json.dumps(msg))
             num_msgs_sent += 1
 
         if num_msgs_sent >= args.maxmessages:
