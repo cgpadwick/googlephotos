@@ -64,8 +64,8 @@ if __name__ == "__main__":
         if "image" in blob.content_type:
             msg = {
                 "database_name": config["firestore"]["database_name"],
+                "customer_table_name": photosapp.CUSTOMERTABLE,
                 "top_level_collection_name": photosapp.IMAGESTABLE,
-                "sub_level_collection_name": photosapp.IMAGESUBTABLE,
                 "bucket_name": customer_rec["bucket_name"],
                 "blob_name": blob.name,
                 "user_id": customer_rec["uuid"],

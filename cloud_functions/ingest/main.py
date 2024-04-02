@@ -65,8 +65,8 @@ def insert_into_db(message, exif_data):
     """Insert record into the database."""
 
     database_name = message.get("database_name")
+    customer_table_name = message.get("customer_table_name")
     tl_name = message.get("top_level_collection_name")
-    sl_name = message.get("sub_level_collection_name")
     bucket_name = message.get("bucket_name")
     blob_name = message.get("blob_name")
     user_id = message.get("user_id")
@@ -87,9 +87,9 @@ def insert_into_db(message, exif_data):
     db = firestore.Client(database=database_name)
 
     doc_ref = (
-        db.collection(tl_name)
+        db.collection(customer_table_name)
         .document(user_id)
-        .collection(sl_name)
+        .collection(tl_name)
         .document(str(data_record["uuid"]))
     )
     doc_ref.set(data_record)
