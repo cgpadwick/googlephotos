@@ -44,6 +44,11 @@ def get_exif_data(blob):
         blob_data = blob.download_as_bytes()
         img = Image.open(BytesIO(blob_data))
 
+        # BMP images have no exif data and no exif tags are defined.
+        # PIL doesn't handle this properly so we need to handle it manually.
+        if img.format == "BMP":
+            return {}
+
         exif_data = img._getexif()
 
         if exif_data:
