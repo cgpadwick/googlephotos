@@ -17,7 +17,7 @@ functions:
     env_vars: ["OPENAI_API_KEY"]
   ingest_function:
     source_url: "https://source.developers.google.com/projects/cgp-project/repos/github_cgpadwick_googlephotos/moveable-aliases/main/paths/cloud_functions/ingest/"
-    max_instances: 10
+    max_instances: 100
     location: us-central1
     runtime: python39
     entry_point: ingest_object

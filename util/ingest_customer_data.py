@@ -2,8 +2,8 @@ import argparse
 import json
 from pathlib import Path
 import sys
-
 sys.path.insert(0, "../src")
+import time
 import yaml
 
 from tqdm import tqdm
@@ -17,7 +17,7 @@ if __name__ == "__main__":
         "--maxmessages",
         required=False,
         type=int,
-        default=10,
+        default=None,
         help="maximum number of messages to send",
     )
     parser.add_argument(
@@ -55,8 +55,10 @@ if __name__ == "__main__":
     pubsub_helper = photosapp.PubSubHelper(args.configfile)
     topic_name = config["topics"]["ingest_topic"]["name"]
 
+    msg_batch_size = config["functions"]["ingest_function"]["max_instances"]
+
     # Iterate through the blobs and create messages for each.
-    num_msgs_sent = 0
+    total_num_msgs_sent = 0
     for blob in tqdm(blobs):
 
         if "image" in blob.content_type:
@@ -72,7 +74,13 @@ if __name__ == "__main__":
             message_id = pubsub_helper.publish_message(topic_name, msg)
             print(f"\n\nPublished message {message_id}.")
             print(json.dumps(msg))
-            num_msgs_sent += 1
+            total_num_msgs_sent += 1
+            time.sleep(1)
 
-        if num_msgs_sent >= args.maxmessages:
+            if total_num_msgs_sent % msg_batch_size == 0:
+                print("\n\nSleeping for 2 seconds...")
+                print(f"Total messages sent: {total_num_msgs_sent}, {msg_batch_size}")
+                time.sleep(2)
+
+        if args.maxmessages and total_num_msgs_sent >= args.maxmessages:
             break
