@@ -84,9 +84,11 @@ def get_photo_acquired_time(blob_name, exif_data):
     default_timestamp = datetime(1970, 1, 1, 0, 0, 0)
     if exif_data:
         # Example value from DB: "2018:10:07 15:51:33"
-        date_str = "%Y:%m:%d %H:%M:%S"
-        time_stamp = datetime.strptime(exif_data["DateTimeOriginal"], date_str)
-        return time_stamp
+        exif_datetime_str = exif_data.get("DateTimeOriginal", None)
+        if exif_datetime_str:
+            date_str = "%Y:%m:%d %H:%M:%S"
+            time_stamp = datetime.strptime(exif_datetime_str, date_str)
+            return time_stamp
     else:
         # Example filename: "20230525_192803.jpg"
         res = os.path.splitext(os.path.basename(blob_name))
