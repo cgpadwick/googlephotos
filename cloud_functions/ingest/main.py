@@ -1,8 +1,11 @@
 import base64
+from datetime import datetime
 from io import BytesIO
 import json
+import os
 from PIL import Image, TiffImagePlugin
 from PIL.ExifTags import TAGS
+import re
 import traceback
 import uuid
 
@@ -61,7 +64,44 @@ def get_exif_data(blob):
             return {}
 
 
-def insert_into_db(message, exif_data):
+def get_photo_acquired_time(blob_name, exif_data):
+    """
+    Get the acquired time of a photo based on the exif data and filename.
+
+    Args:
+    - blob_name: The name of the photo blob.
+    - exif_data: The exif data of the photo.
+
+    Returns:
+    - The acquired time of the photo as a datetime object.
+    """
+
+    # If the exif data exists, read the field DateTimeOriginal as the timestamp.
+    # If not, then look at the filename of the photo.  If it matches a format like
+    # "20230525_192803.jpg" then that can be converted into a date.  If not then
+    # set the creation date to a default value.
+
+    default_timestamp = datetime(1970, 1, 1, 0, 0, 0)
+    if exif_data:
+        # Example value from DB: "2018:10:07 15:51:33"
+        date_str = "%Y:%m:%d %H:%M:%S"
+        time_stamp = datetime.strptime(exif_data["DateTimeOriginal"], date_str)
+        return time_stamp
+    else:
+        # Example filename: "20230525_192803.jpg"
+        res = os.path.splitext(os.path.basename(blob_name))
+        if len(res) == 2:
+            base_str = res[0]
+            pattern = r"^\d{4}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])_(0[0-9]|1[0-9]|2[0-3])([0-5]\d){2}$"
+            if re.match(pattern, base_str):
+                date_str = "%Y%m%d_%H%M%S"
+                time_stamp = datetime.strptime(base_str, date_str)
+                return time_stamp
+
+    return default_timestamp
+
+
+def insert_into_db(message, exif_data, time_stamp):
     """Insert record into the database."""
 
     database_name = message.get("database_name")
@@ -74,6 +114,7 @@ def insert_into_db(message, exif_data):
     data_record = {
         "blob_name": blob_name,
         "bucket_name": bucket_name,
+        "acquisition_time": time_stamp.isoformat(),
         "exif_data": exif_data,
         "uuid": str(uuid.uuid4()),
     }
@@ -119,7 +160,8 @@ def ingest_object(event, context):
         blob = bucket.get_blob(message.get("blob_name"))
 
         exif_data = get_exif_data(blob)
-        insert_into_db(message, exif_data)
+        time_stamp = get_photo_acquired_time(message["blob_name"], exif_data)
+        insert_into_db(message, exif_data, time_stamp)
 
         log_message(
             {
