@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Photos</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap-theme.min.css">
+</head>
+<body>
+    <div class="container" style="max-width: 400px;">
+        <h1>Select Date</h1>
+        <form action="/process_date" method="post">
+            <div class="form-group mt-4">
+                <label for="start_date">Select a Start Date:</label>
+                <input type="date" id="start_date" name="start_date" class="form-control">
+                <label for="end_date">Select an End Date:</label>
+                <input type="date" id="end_date" name="end_date" class="form-control">
+                <label for="dropdown">Select an option to generate captions:</label>
+                <select id="dropdown" name="selected_option">
+                    {% for option in options %}
+                        <option value="{{ option }}">{{ option }}</option>
+                    {% endfor %}
+                </select>
+
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Bootstrap JS (optional) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+
+</html>

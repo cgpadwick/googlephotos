@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Photos</title>
+    <style>
+        .photos {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .photo {
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Google Photos</h1>
+    <div class="photos">
+        {% for photo in photos %}
+        <div class="photo">
+            <img src="{{ photo.baseUrl }}" alt="Photo">
+            <p>{{ photo.caption }}</p>
+        </div>
+        {% endfor %}
+    </div>
+
+</body>
+</html>
