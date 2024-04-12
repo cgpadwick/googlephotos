@@ -36,15 +36,4 @@ msg = {
 }
 
 event = {"data": base64.b64encode(json.dumps(msg).encode("utf-8"))}
-
-
-# override the generate_signed_url function in main to return a fixed URL.
-def _generate_signed_url(message):
-    url = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"
-
-    return url
-
-
-main.generate_signed_url = _generate_signed_url
-
 main.caption_image(event, None)

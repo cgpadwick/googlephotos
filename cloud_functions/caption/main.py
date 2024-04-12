@@ -20,13 +20,19 @@ def log_message(msg_dict):
     logger.log_struct(msg_dict)
 
 
-def predict_from_url(image_url):
+def generate_caption(doc_ref):
     """
     A function to predict captions for images from the given URL.
 
     :param image_url: The URL of the image to be processed
     :return: caption generated for the image.
     """
+
+    doc = doc_ref.get().to_dict()
+    storage_client = storage.Client()
+    bucket = storage_client.get_bucket(doc["bucket_name"])
+    blob = bucket.get_blob(doc["blob_name"])
+    img_bytes = base64.b64encode(blob.download_as_bytes()).decode("utf-8")
 
     headers = {
         "Content-Type": "application/json",
@@ -42,7 +48,9 @@ def predict_from_url(image_url):
                     {"type": "text", "text": "What’s in this image?"},
                     {
                         "type": "image_url",
-                        "image_url": {"url": image_url},
+                        "image_url": {
+                            "url": f"data:{blob.content_type};base64,{img_bytes}"
+                        },
                     },
                 ],
             }
@@ -79,32 +87,6 @@ def get_docref_from_db(message):
     return doc_ref
 
 
-def generate_signed_url(message):
-    """Generate a signed URL for the image."""
-
-    doc_ref = get_docref_from_db(message)
-    doc = doc_ref.get().to_dict()
-
-    storage_client = storage.Client()
-    bucket = storage_client.get_bucket(doc["bucket_name"])
-    blob = bucket.get_blob(doc["blob_name"])
-
-    signed_url = blob.generate_signed_url(
-        version="v4",
-        expiration=datetime.timedelta(minutes=5),
-        method="GET",
-    )
-
-    return signed_url
-
-
-def update_document_in_db(message, caption):
-    """Insert record into the database."""
-
-    doc_ref = get_docref_from_db(message)
-    doc_ref.update({"caption": caption})
-
-
 def caption_image(event, context):
     """
     A function to process an image caption event.
@@ -120,9 +102,9 @@ def caption_image(event, context):
         data = base64.b64decode(event["data"]).decode("utf-8")
         message = json.loads(data)
 
-        url = generate_signed_url(message)
-        caption = predict_from_url(url)
-        update_document_in_db(message, caption)
+        doc_ref = get_docref_from_db(message)
+        caption = generate_caption(doc_ref)
+        doc_ref.update({"caption": caption})
 
         log_message(
             {
