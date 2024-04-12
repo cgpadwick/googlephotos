@@ -78,7 +78,7 @@ class GCStoragehelper(object):
 class DatabaseHelper(object):
     """A class to represent a database."""
 
-    def __init__(self, config_file):
+    def __init__(self, config_file, test_mode=False):
         """Initialize the Database object."""
         self.config_file = config_file
         self.config = self.load_config()
@@ -87,7 +87,11 @@ class DatabaseHelper(object):
         creds = credentials.Certificate(creds_path)
         if not firebase_admin._apps:
             _ = firebase_admin.initialize_app(creds)
-        self.db = firestore.Client(database=self.config["firestore"]["database_name"])
+
+        if test_mode:
+            self.db = firestore.Client(database=self.config["firestore"]["testdb_name"])
+        else:
+            self.db = firestore.Client(database=self.config["firestore"]["database_name"])
 
     def load_config(self):
         """Load the configuration file and return the loaded configuration."""

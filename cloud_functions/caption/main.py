@@ -1,8 +1,23 @@
 import base64
+import datetime
 import json
 import os
 import requests
-from google.cloud import pubsub_v1
+import traceback
+
+import firebase_admin
+from firebase_admin import firestore
+
+from google.cloud import logging
+from google.cloud import storage
+
+
+def log_message(msg_dict):
+    """Log message to Cloud Logging."""
+
+    client = logging.Client()
+    logger = client.logger("caption")
+    logger.log_struct(msg_dict)
 
 
 def predict_from_url(image_url):
@@ -46,44 +61,85 @@ def predict_from_url(image_url):
     return caption
 
 
-def publish_message(project_id, topic_name, message):
+def get_docref_from_db(message):
+    """Retrieve reference to a document from the database."""
+
+    database_name = message.get("database_name")
+
+    # Document path is intended to be in the format
+    # "customers/{customer_id}/{tl_name}/{document_id}"
+    document_path = message.get("document_path")
+
+    if not firebase_admin._apps:
+        _ = firebase_admin.initialize_app()
+
+    db = firestore.Client(database=database_name)
+    doc_ref = db.document(document_path)
+
+    return doc_ref
+
+
+def generate_signed_url(message):
+    """Generate a signed URL for the image."""
+
+    doc_ref = get_docref_from_db(message)
+    doc = doc_ref.get().to_dict()
+
+    storage_client = storage.Client()
+    bucket = storage_client.get_bucket(doc["bucket_name"])
+    blob = bucket.get_blob(doc["blob_name"])
+
+    signed_url = blob.generate_signed_url(
+        version="v4",
+        expiration=datetime.timedelta(minutes=5),
+        method="GET",
+    )
+
+    return signed_url
+
+
+def update_document_in_db(message, caption):
+    """Insert record into the database."""
+
+    doc_ref = get_docref_from_db(message)
+    doc_ref.update({"caption": caption})
+
+
+def caption_image(event, context):
     """
-    Publishes a message to the specified Pub/Sub topic.
+    A function to process an image caption event.
 
-    Args:
-        project_id (str): The ID of the GCP project.
-        topic_name (str): The name of the Pub/Sub topic.
-        message (str): The message to publish.
-
-    Returns:
-        None
-    """
-    publisher = pubsub_v1.PublisherClient()
-    topic_path = publisher.topic_path(project_id, topic_name)
-    data = message.encode("utf-8")
-    future = publisher.publish(topic_path, data=data)
-    future.result()
-
-
-def hello_pubsub(event, context):
-    """
-    A function to handle a Pub/Sub event. It decodes the message from the event, sets up the Pub/Sub publisher client, and publishes the message to a specified topic.
     Parameters:
-        event: dict, The Pub/Sub event data.
-        context: google.cloud.functions.Context, The event metadata.
+        event (dict): The event triggering the function.
+        context (dict): The context in which the function is running.
+
     Returns:
         None
     """
-
     try:
         data = base64.b64decode(event["data"]).decode("utf-8")
         message = json.loads(data)
-        baseurl = message.get("baseurl")
-        caption = predict_from_url(baseurl)
-        msg = f"Received message: {message}. caption: {caption}"
-        publish_message(message["project_id"], message["processed_topic"], msg)
+
+        url = generate_signed_url(message)
+        caption = predict_from_url(url)
+        update_document_in_db(message, caption)
+
+        log_message(
+            {
+                "message": "Captioned image",
+                "document_path": message["document_path"],
+                "status": "success",
+            }
+        )
 
     except Exception as e:
-        msg = f"Received message: {message}.  Error: {e}"
-        publish_message(message["project_id"], message["error_topic"], msg)
-        print(msg)
+
+        log_message(
+            {
+                "message": "Failed to caption image",
+                "document_path": message["document_path"],
+                "error": str(e),
+                "traceback": traceback.format_exc(),
+                "status": "error",
+            }
+        )
