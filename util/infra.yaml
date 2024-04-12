@@ -7,12 +7,12 @@ topics:
     name: cgp-ingest-topic
     subscribers: []
 functions:
-  pubsub_function:
+  caption_function:
     source_url: "https://source.developers.google.com/projects/cgp-project/repos/github_cgpadwick_googlephotos/moveable-aliases/main/paths/cloud_functions/pubsub_trigger/"
-    max_instances: 10
+    max_instances: 100
     location: us-central1
     runtime: python39
-    entry_point: hello_pubsub
+    entry_point: caption_image
     trigger_topic: cgp-caption-topic
     env_vars: ["OPENAI_API_KEY"]
   ingest_function:
@@ -30,5 +30,8 @@ accounts:
 buckets:
   main_bucket:
     name: cgp-photos-export
+  test_bucket:
+    name: cgp-photos-export
 firestore:
   database_name: photos
+  testdb_name: testdb
