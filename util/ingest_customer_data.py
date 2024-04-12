@@ -39,15 +39,7 @@ if __name__ == "__main__":
         config = yaml.safe_load(file)
 
     db_helper = photosapp.DatabaseHelper(args.configfile)
-    customer = db_helper.get_customer(args.email)
-
-    assert len(customer) == 1
-    if customer[0].exists:
-        customer_rec = customer[0].to_dict()
-        print(customer_rec)
-    else:
-        print(f"Could not find customer with email {args.email}")
-        sys.exit(1)
+    customer_rec = db_helper.get_customer(args.email)
 
     storage_helper = photosapp.GCStoragehelper(args.configfile)
     blobs = storage_helper.get_blobs(customer_rec["bucket_name"])

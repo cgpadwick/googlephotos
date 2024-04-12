@@ -105,7 +105,9 @@ class DatabaseHelper(object):
         """Retrieve a customer in the database."""
         doc_ref = self.db.collection(CUSTOMERTABLE).where("email", "==", email).limit(1)
         docs = doc_ref.get()
-        return docs
+        assert len(docs) == 1
+        customer = docs[0].to_dict()
+        return customer
 
     def insert_customer(self, customer):
         """Insert a customer into the database."""
