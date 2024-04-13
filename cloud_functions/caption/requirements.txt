@@ -4,3 +4,4 @@ firebase-admin>=6.4.0
 google-cloud-firestore>=2.15.0
 google-cloud-storage>=2.15.0
 google-cloud-logging>=3.10.0
+pillow>=10.2.0

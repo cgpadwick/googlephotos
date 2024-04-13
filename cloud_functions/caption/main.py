@@ -1,7 +1,8 @@
 import base64
-import datetime
+from io import BytesIO
 import json
 import os
+from PIL import Image
 import requests
 import traceback
 
@@ -32,7 +33,17 @@ def generate_caption(doc_ref):
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(doc["bucket_name"])
     blob = bucket.get_blob(doc["blob_name"])
-    img_bytes = base64.b64encode(blob.download_as_bytes()).decode("utf-8")
+
+    blob_data = blob.download_as_bytes()
+    img = Image.open(BytesIO(blob_data))
+    # If the image format isn't jpeg, convert it before sending it
+    # to the captioning API.
+    if img.format != "JPEG":
+        bytes_buffer = BytesIO()
+        img.save(bytes_buffer, "jpeg")
+        img_bytes = base64.b64encode(bytes_buffer.getvalue()).decode("utf-8")
+    else:
+        img_bytes = base64.b64encode(blob_data).decode("utf-8")
 
     headers = {
         "Content-Type": "application/json",
@@ -48,9 +59,7 @@ def generate_caption(doc_ref):
                     {"type": "text", "text": "What’s in this image?"},
                     {
                         "type": "image_url",
-                        "image_url": {
-                            "url": f"data:{blob.content_type};base64,{img_bytes}"
-                        },
+                        "image_url": {"url": f"data:image/jpeg;base64,{img_bytes}"},
                     },
                 ],
             }
