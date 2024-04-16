@@ -7,6 +7,8 @@ import {
 
 import firebaseApp from '../firebase/firebase';
 
+import SearchInterface from '../components/InstantSearch';
+
 import '../styles/styles.css';
 
 async function fetchSignedUrls(bucketName, fileNames) {
@@ -77,6 +79,7 @@ function ImageGallery() {
   return (
     <div>
       <h1>Image Gallery</h1>
+      <SearchInterface />
       <button onClick={handleForwardClick}>Forward</button>
       <div className="gallery">
         {images.map((img) => (
