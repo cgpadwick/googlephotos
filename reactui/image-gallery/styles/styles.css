@@ -24,3 +24,13 @@
   transition: opacity 0.5s ease; /* Smooth transition */
   pointer-events: none; /* Avoid text interfering with image hover */
 }
+.ais-Highlight em {
+  font-style: normal; /* Removes italic styling */
+  font-weight: bold; /* Makes text bold */
+  background-color: yellow; /* Optional: Adds a background color to make it stand out */
+}
+.search-image {
+  width: 100%;
+  height: auto;
+  max-width: 500px; /* sets a maximum size */
+}

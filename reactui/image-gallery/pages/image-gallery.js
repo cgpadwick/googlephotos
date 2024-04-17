@@ -11,7 +11,7 @@ import SearchInterface from '../components/InstantSearch';
 
 import '../styles/styles.css';
 
-async function fetchSignedUrls(bucketName, fileNames) {
+export async function fetchSignedUrls(bucketName, fileNames) {
   const response = await fetch('/api/generateSignedUrls', {
     method: 'POST',
     headers: {

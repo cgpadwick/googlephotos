@@ -16,7 +16,7 @@ export default async function handler(req, res) {
       const options = {
         version: 'v4',
         action: 'read',
-        expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+        expires: Date.now() + 1 * 60 * 1000, // 1 minutes
       };
 
       // Attempt to generate a signed URL for the fileName

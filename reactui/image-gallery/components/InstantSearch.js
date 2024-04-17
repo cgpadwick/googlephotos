@@ -1,5 +1,12 @@
-import { InstantSearch, SearchBox, Hits, Stats } from "react-instantsearch-dom"
+import React, { useEffect, useState } from 'react';
+import { InstantSearch, SearchBox, Hits, Stats, Highlight } from "react-instantsearch-dom"
 import TypesenseInstantSearchAdapter from "typesense-instantsearch-adapter"
+
+import { fetchSignedUrls } from '../pages/image-gallery.js'
+
+import '../styles/styles.css';
+
+
 const typesenseInstantsearchAdapter = new TypesenseInstantSearchAdapter({
   server: {
     apiKey: process.env.NEXT_PUBLIC_TYPESENSE_API_KEY,
@@ -20,11 +27,32 @@ const typesenseInstantsearchAdapter = new TypesenseInstantSearchAdapter({
 })
 const searchClient = typesenseInstantsearchAdapter.searchClient
 export default function SearchInterface() {
-  const Hit = ({ hit }) => (
-    <p>
-      {hit.blob_name} - {hit.bucket_name}
-    </p>
-  )
+
+    const Hit = ({ hit }) => {
+        const [imageUrl, setImageUrl] = useState(null);
+    
+        useEffect(() => {
+          fetchSignedUrls(hit.bucket_name, [hit.blob_name])
+            .then(signedUrls => {
+              if (signedUrls.length > 0) {
+                setImageUrl(signedUrls[0].url); // Assuming signedUrls is an array of objects with url property
+              }
+            })
+            .catch(error => {
+              console.error('Error fetching signed URL:', error);
+            });
+        }, [hit.blob_name]);
+    
+        return (
+          <div style={{ marginBottom: 10 }}>
+            {imageUrl && <img src={imageUrl} alt={hit.blob_name} className="search-image" />}
+            <div>
+              <Highlight attribute="caption" hit={hit} />
+            </div>
+          </div>
+        );
+      };
+
 return (
       <InstantSearch searchClient={searchClient} indexName="images">
         <SearchBox />
