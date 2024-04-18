@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { InstantSearch, Hits, Configure, connectSearchBox, Highlight } from 'react-instantsearch-dom';
+import { InstantSearch, Hits, Configure, connectSearchBox, Highlight, Pagination } from 'react-instantsearch-dom';
 import TypesenseInstantSearchAdapter from 'typesense-instantsearch-adapter';
 import { fetchSignedUrls } from '../pages/image-gallery.js';
 
@@ -29,14 +29,14 @@ const SearchBox = ({ refine }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} className="search-form">
       <input
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search for images..."
       />
-      <button type="submit">Search</button>
+      <button type="submit" className="search-button">Search</button>
     </form>
   );
 };
@@ -62,10 +62,10 @@ const Hit = ({ hit }) => {
   }, [hit.blob_name, hit.bucket_name]);
 
   return (
-    <div style={{ marginBottom: 10 }}>
+    <div className="hit">
       {imageUrl && <img src={imageUrl} alt={hit.blob_name} className="search-image" />}
       <div>
-        <Highlight attribute="caption" hit={hit} tagName="mark" />
+        <Highlight attribute="caption" hit={hit} tagName="mark"/>
       </div>
     </div>
   );
@@ -75,6 +75,7 @@ export default function SearchInterface() {
   return (
     <InstantSearch searchClient={searchClient} indexName="images">
       <CustomSearchBox />
+      <Configure hitsPerPage={20} /> 
       <Hits hitComponent={Hit} />
     </InstantSearch>
   );
