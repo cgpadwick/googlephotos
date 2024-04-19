@@ -1,45 +1,11 @@
-.gallery {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-  gap: 10px;
-}
-.gallery img {
-  width: 100%;
-  height: auto;
+/* General styling */
+
+img {
+  width: 100%; /* Ensures image covers the grid item */
+  height: auto; /* Maintain aspect ratio */
   object-fit: cover;
-  border: 2px solid #ffffff; /* Adjust the border size and color as needed */
-  box-sizing: border-box; /* Ensure the image fills its container */
-  border-radius: 5px;
-}
-.image-text {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  background-color:rgba(0, 0, 0, 0.5); /* Semi-transparent background */
-  color:white;
-  text-align: center;
-  padding: 10px;
-  opacity: 0;
-  transition: opacity 0.5s ease; /* Smooth transition */
-  pointer-events: none; /* Avoid text interfering with image hover */
-}
-.ais-Highlight em {
-  font-style: normal; /* Removes italic styling */
-  font-weight: bold; /* Makes text bold */
-  background-color: yellow; /* Optional: Adds a background color to make it stand out */
-}
-.search-image {
-  width: 100%;
-  height: auto;
-  max-width: 500px; /* sets a maximum size */
-}
-/* General body styling */
-body {
-  font-family: Arial, sans-serif;
-  background-color: #f4f4f9;
-  margin: 0;
-  padding: 20px;
+  display: block; /* Removes bottom space/gap */
+  max-width: 350px;
 }
 
 /* Styling for the search form */
@@ -71,42 +37,35 @@ body {
   background-color: #0056b3;
 }
 
-/* Container for search results */
-.results-container {
-  display: flex;
+/* Override AIS styles for InstantSearch*/
+.ais-Hits {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 20px;
+  border: 1px solid green; 
+}
+
+.ais-Hits-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 20px;
+  border: 1px solid green; 
+  list-style-type: none;
+}
+
+.ais-Hits-item {
+  display: flex; /* Example of changing layout */
   flex-direction: column;
   align-items: center;
-}
-
-/* Individual result item */
-.hit {
-  background-color: white;
-  width: 80%;
-  max-width: 600px;
-  margin: 10px;
-  padding: 20px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  background-color: #fff;
+  padding: 10px;
   border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-img {
-  width: 100%; /* Responsive image */
-  height: auto;
-  border-radius: 5px;
+.ais-Highlight em {
+  font-style: normal; /* Removes italic styling */
+  font-weight: bold; /* Makes text bold */
+  background-color: yellow; /* Optional: Adds a background color to make it stand out */
 }
 
-@media (max-width: 768px) {
-  .search-input {
-      width: 100%;
-      border-radius: 5px;
-  }
-
-  .search-button {
-      width: 100%;
-      border-radius: 5px;
-  }
-
-  .hit {
-      width: 90%;
-  }
-}

@@ -62,10 +62,10 @@ const Hit = ({ hit }) => {
   }, [hit.blob_name, hit.bucket_name]);
 
   return (
-    <div className="hit">
-      {imageUrl && <img src={imageUrl} alt={hit.blob_name} className="search-image" />}
+    <div>
+      {imageUrl && <img src={imageUrl} alt={hit.blob_name} />}
       <div>
-        <Highlight attribute="caption" hit={hit} tagName="mark"/>
+        <Highlight attribute="caption" hit={hit} tagName="mark" />
       </div>
     </div>
   );
@@ -76,7 +76,9 @@ export default function SearchInterface() {
     <InstantSearch searchClient={searchClient} indexName="images">
       <CustomSearchBox />
       <Configure hitsPerPage={20} /> 
-      <Hits hitComponent={Hit} />
+      <div>
+        <Hits hitComponent={Hit} />
+      </div>
     </InstantSearch>
   );
 }
