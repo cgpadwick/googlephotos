@@ -27,7 +27,11 @@ def cast(v):
     Any - The casted value.
     """
     if isinstance(v, TiffImagePlugin.IFDRational):
-        return float(v)
+        # Check for nan values here befoe casting to float.
+        if v != v:
+            return None
+        else:
+            return float(v)
     elif isinstance(v, tuple):
         return tuple(cast(t) for t in v)
     elif isinstance(v, bytes):
