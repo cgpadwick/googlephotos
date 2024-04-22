@@ -1,16 +1,12 @@
-// pages/index.js
 import React, { useState } from 'react';
-import { useRouter } from 'next/router';
+import {firebaseApp, auth} from '../firebase/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { app, auth } from '../firebase/firebase';
-import '../styles/styles.css';
 
-function Home() {
+function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const router = useRouter();
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -19,12 +15,10 @@ function Home() {
 
         try {
             await signInWithEmailAndPassword(auth, email, password);
-            // Redirect or handle the login success scenario
+            // Redirect or do something upon successful login
             console.log('Successfully logged in!');
             setIsLoading(false);
-            router.push('/image-gallery');
         } catch (error) {
-            console.log(error);
             setError('Failed to log in. Please check your credentials.');
             setIsLoading(false);
         }
@@ -61,4 +55,4 @@ function Home() {
     );
 }
 
-export default Home;
+export default Login;
