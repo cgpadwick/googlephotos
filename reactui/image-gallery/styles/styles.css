@@ -127,4 +127,37 @@ button:disabled {
   margin-bottom: 15px;
 }
 
+.loading-container {
+  display: flex;
+  justify-content: center; /* Center horizontally */
+  align-items: center; /* Center vertically */
+  text-align: center;
+  height: 100vh; /* Full viewport height */
+  padding: 20px;
+  font-size: 16px;
+  color: #333; /* Dark grey text color */
+  background-color: rgba(255, 255, 255, 0.9); /* Slightly transparent white background */
+}
+.spinner {
+  border: 4px solid rgba(0, 0, 0, 0.1); /* Light grey border */
+  border-top: 4px solid #3498db; /* Blue color */
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-message {
+  color: red;
+  background-color: #ffdada;
+  padding: 10px;
+  margin: 10px 0;
+  border: 1px solid red;
+  border-radius: 5px;
+}
 
