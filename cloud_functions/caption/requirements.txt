@@ -5,3 +5,4 @@ google-cloud-firestore>=2.15.0
 google-cloud-storage>=2.15.0
 google-cloud-logging>=3.10.0
 pillow>=10.2.0
+pillow_heif>=0.16.0

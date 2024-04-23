@@ -5,6 +5,8 @@ import json
 import os
 from PIL import Image, TiffImagePlugin
 from PIL.ExifTags import TAGS
+import piexif
+from pillow_heif import register_heif_opener
 import re
 import traceback
 import uuid
@@ -44,25 +46,50 @@ def cast(v):
         return v
 
 
+def flatten_nested_tuples(t):
+    """
+    Flattens nested tuples in the input tuple 't'.
+
+    Parameters:
+    t : tuple - The input tuple to flatten.
+
+    Returns:
+    tuple - The flattened tuple or the original input tuple if it's not nested.
+    """
+
+    if isinstance(t, tuple):
+        if len(t) != 0 and isinstance(t[0], tuple):
+            return tuple([x for xs in t for x in xs])
+    return t
+
+
 def get_exif_data(blob):
     """Get Exif data from the blob object."""
 
     if "image" in blob.content_type:
+        register_heif_opener()  # Register the HEIF and HEIC support.
         blob_data = blob.download_as_bytes()
         img = Image.open(BytesIO(blob_data))
+        exif_data = {}
 
-        # BMP images have no exif data and no exif tags are defined.
-        # PIL doesn't handle this properly so we need to handle it manually.
         if img.format == "BMP":
-            return {}
-
-        exif_data = img._getexif()
+            # BMP images have no exif data and no exif tags are defined.
+            # PIL doesn't handle this properly so we need to handle it manually.
+            exif_data = {}
+        elif img.format == "HEIC" or img.format == "HEIF":
+            # Load the exif data from the image if it exists.
+            raw_exif_data = img.info.get("exif", None)
+            if raw_exif_data:
+                result = piexif.load(raw_exif_data, key_is_name=True)
+                exif_data = result.get("Exif", {})
+        else:
+            exif_data = img.getexif()
 
         if exif_data:
             exif_info = {}
             for tag, value in exif_data.items():
                 tag_name = TAGS.get(tag, tag)
-                exif_info[tag_name] = cast(value)
+                exif_info[tag_name] = flatten_nested_tuples(cast(value))
             return exif_info
         else:
             return {}

@@ -3,6 +3,7 @@ from io import BytesIO
 import json
 import os
 from PIL import Image
+from pillow_heif import register_heif_opener
 import requests
 import traceback
 
@@ -34,6 +35,7 @@ def generate_caption(doc_ref):
     bucket = storage_client.get_bucket(doc["bucket_name"])
     blob = bucket.get_blob(doc["blob_name"])
 
+    register_heif_opener()  # Register the HEIF and HEIC support.
     blob_data = blob.download_as_bytes()
     img = Image.open(BytesIO(blob_data))
     # If the image format isn't jpeg, convert it before sending it
