@@ -18,17 +18,18 @@ from google.cloud import storage
 from google.cloud import logging
 
 
-def generate_webp_image(bucket, blob):
+def generate_webp_image(bucket, blob, storage_client=None):
     """
-    Generates a WebP image from the given bucket and blob.
+    Generates a resized version of an image in WebP format and uploads it to the bucket.
 
-    Args:
-        bucket (storage.Bucket): The bucket containing the image.
-        blob (storage.Blob): The blob representing the image.
+    Parameters:
+    - bucket: The storage bucket where the image will be uploaded.
+    - blob: The image to be resized and converted.
+    - storage_client: Optional. The storage client to use. If not provided, a new client will be created.
 
     Returns:
-        str: The name of the generated WebP image, or the existing WebP image if it already exists.
-        None: If the blob is not an image
+    - If the WebP version of the image was successfully generated and uploaded, returns the new blob name.
+    - If the image already exists in WebP format, returns None.
     """
 
     if "image" in blob.content_type:
@@ -39,8 +40,9 @@ def generate_webp_image(bucket, blob):
         new_blob_name = os.path.join(dir_name, f"{base}.webp")
 
         # Check and see if it exists or not.
-        client = storage.Client()
-        if not storage.Blob(bucket=bucket, name=new_blob_name).exists(client):
+        if storage_client is None:
+            storage_client = storage.Client()
+        if not storage.Blob(bucket=bucket, name=new_blob_name).exists(storage_client):
 
             # Generate a resized version of the image in webp format
             # and upload it to the bucket.
@@ -60,7 +62,9 @@ def generate_webp_image(bucket, blob):
             del img
             bucket.blob(new_blob_name).upload_from_string(bytes_buffer.getvalue())
 
-        return new_blob_name
+            return new_blob_name
+        else:
+            return None
 
     return None
 
@@ -239,7 +243,7 @@ def ingest_object(event, context):
         storage_client = storage.Client()
         bucket = storage_client.get_bucket(message.get("bucket_name"))
         blob = bucket.get_blob(message.get("blob_name"))
-        webp_name = generate_webp_image(bucket, blob)
+        webp_name = generate_webp_image(bucket, blob, storage_client)
         exif_data = get_exif_data(blob)
         time_stamp = get_photo_acquired_time(message["blob_name"], exif_data)
         insert_into_db(message, exif_data, time_stamp, webp_name)
