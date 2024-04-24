@@ -38,6 +38,7 @@ def generate_caption(doc_ref):
     register_heif_opener()  # Register the HEIF and HEIC support.
     blob_data = blob.download_as_bytes()
     img = Image.open(BytesIO(blob_data))
+    img = img.convert("RGB")  # Handle PNG RGBA format.
     # If the image format isn't jpeg, convert it before sending it
     # to the captioning API.
     if img.format != "JPEG":
