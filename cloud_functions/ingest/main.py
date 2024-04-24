@@ -18,6 +18,53 @@ from google.cloud import storage
 from google.cloud import logging
 
 
+def generate_webp_image(bucket, blob):
+    """
+    Generates a WebP image from the given bucket and blob.
+
+    Args:
+        bucket (storage.Bucket): The bucket containing the image.
+        blob (storage.Blob): The blob representing the image.
+
+    Returns:
+        str: The name of the generated WebP image, or the existing WebP image if it already exists.
+        None: If the blob is not an image
+    """
+
+    if "image" in blob.content_type:
+
+        # Set up the new blob name.
+        base, _ = os.path.splitext(os.path.basename(blob.name))
+        dir_name = os.path.dirname(blob.name)
+        new_blob_name = os.path.join(dir_name, f"{base}.webp")
+
+        # Check and see if it exists or not.
+        client = storage.Client()
+        if not storage.Blob(bucket=bucket, name=new_blob_name).exists(client):
+
+            # Generate a resized version of the image in webp format
+            # and upload it to the bucket.
+            register_heif_opener()  # Register the HEIF and HEIC support.
+            blob_data = blob.download_as_bytes()
+            img = Image.open(BytesIO(blob_data))
+            img = img.convert("RGB")  # Handle PNG RGBA format.
+            w, h = img.size
+            resize_factor = min(w, h) // 500
+            if resize_factor < 1:
+                resize_factor = 1
+
+            bytes_buffer = BytesIO()
+            img.resize((w // resize_factor, h // resize_factor), Image.LANCZOS).save(
+                bytes_buffer, "WEBP"
+            )
+            del img
+            bucket.blob(new_blob_name).upload_from_string(bytes_buffer.getvalue())
+
+        return new_blob_name
+
+    return None
+
+
 def cast(v):
     """
     Casts the input value v to the appropriate type if necessary.
@@ -134,7 +181,7 @@ def get_photo_acquired_time(blob_name, exif_data):
     return default_timestamp
 
 
-def insert_into_db(message, exif_data, time_stamp):
+def insert_into_db(message, exif_data, time_stamp, webp_name):
     """Insert record into the database."""
 
     database_name = message.get("database_name")
@@ -150,6 +197,7 @@ def insert_into_db(message, exif_data, time_stamp):
         "acquisition_time": time_stamp.isoformat(),
         "exif_data": exif_data,
         "uuid": str(uuid.uuid4()),
+        "rr_img": webp_name,
     }
 
     # Convert any integer keys to strings.
@@ -191,10 +239,10 @@ def ingest_object(event, context):
         storage_client = storage.Client()
         bucket = storage_client.get_bucket(message.get("bucket_name"))
         blob = bucket.get_blob(message.get("blob_name"))
-
+        webp_name = generate_webp_image(bucket, blob)
         exif_data = get_exif_data(blob)
         time_stamp = get_photo_acquired_time(message["blob_name"], exif_data)
-        insert_into_db(message, exif_data, time_stamp)
+        insert_into_db(message, exif_data, time_stamp, webp_name)
 
         log_message(
             {
