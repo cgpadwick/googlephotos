@@ -15,6 +15,7 @@ functions:
     entry_point: caption_image
     trigger_topic: cgp-caption-topic
     env_vars: ["OPENAI_API_KEY"]
+    memory_mb: 512
   ingest_function:
     source_url: "https://source.developers.google.com/projects/cgp-project/repos/github_cgpadwick_googlephotos/moveable-aliases/main/paths/cloud_functions/ingest/"
     max_instances: 100
@@ -23,6 +24,7 @@ functions:
     entry_point: ingest_object
     trigger_topic: cgp-ingest-topic
     env_vars: []
+    memory_mb: 512
 accounts:
   service_account:
     name: testserviceaccount@cgp-project.iam.gserviceaccount.com
@@ -31,7 +33,7 @@ buckets:
   main_bucket:
     name: cgp-photos-export
   test_bucket:
-    name: cgp-photos-export
+    name: cgp-test-data
 firestore:
   database_name: photos
   testdb_name: testdb

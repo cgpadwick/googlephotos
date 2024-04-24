@@ -230,6 +230,7 @@ class InfraManager(object):
                 f"projects/{self.config['project_id']}/topics/{attr['trigger_topic']}"
             )
             function = functions_v1.CloudFunction()
+            function.available_memory_mb = attr["memory_mb"]
             function.entry_point = attr["entry_point"]
             function.runtime = attr["runtime"]
             function.name = name
