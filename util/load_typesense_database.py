@@ -13,6 +13,24 @@ import photosapp
 import typesense
 
 
+def warn(collection_name, test_mode):
+    """
+    Print a warning message to the console.
+    """
+
+    print(
+        "\n\nWarning: this script will overwrite any existing data in the Typesense database."
+    )
+    print(f"Collection: {collection_name}  Test mode: {test_mode}")
+    print("Press Y to continue, any other key to exit.")
+
+    if input() != "Y":
+        print("Exiting...")
+        exit()
+
+    return
+
+
 def load_typesense_db(config_file, email, maxrecords, test_mode=False):
     """
     Load the Typesense database using data from the Firestore database.
@@ -56,6 +74,7 @@ def load_typesense_db(config_file, email, maxrecords, test_mode=False):
                 "blob_name": img_rec["blob_name"],
                 "caption": img_rec["caption"],
                 "uuid": img_rec["uuid"],
+                "rr_img": img_rec["rr_img"],
             }
             record_list.append(typesense_rec)
             total_num_records += 1
@@ -79,18 +98,25 @@ def load_typesense_db(config_file, email, maxrecords, test_mode=False):
         }
     )
 
-    # Clear the images collection.
-    client.collections["images"].delete()
+    # Clear the typesense collection.
+    collection_name = config["typesense"]["production_collection_name"]
+    if test_mode:
+        collection_name = config["typesense"]["test_collection_name"]
+    warn(collection_name, test_mode)
+    for entry in client.collections.retrieve():
+        if entry["name"] == collection_name:
+            client.collections[collection_name].delete()
 
     # Set up the schema.
     create_response = client.collections.create(
         {
-            "name": "images",
+            "name": collection_name,
             "fields": [
                 {"name": "acquisition_time", "type": "auto"},
                 {"name": "blob_name", "type": "string", "facet": True},
                 {"name": "bucket_name", "type": "string", "facet": True},
                 {"name": "caption", "type": "string", "facet": True, "sort": True},
+                {"name": "rr_img", "type": "string", "facet": True},
             ],
             "default_sorting_field": "caption",
         }
@@ -99,7 +125,7 @@ def load_typesense_db(config_file, email, maxrecords, test_mode=False):
 
     print("Loading records...\n\n")
     for rec in tqdm(record_list):
-        client.collections["images"].documents.upsert(rec)
+        client.collections[collection_name].documents.upsert(rec)
     print("Done!")
 
 
