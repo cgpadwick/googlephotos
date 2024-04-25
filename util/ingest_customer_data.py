@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
 
@@ -13,6 +14,18 @@ import photosapp
 
 
 def ingest_data(config_file, email, maxmessages, test_mode=False):
+    """
+    Ingest data from a configuration file for a specific customer.
+
+    Parameters:
+    - config_file: str, the path to the configuration file
+    - email: str, the email address of the customer
+    - maxmessages: int, the maximum number of messages to process
+    - test_mode: bool, optional, whether to run in test mode (default is False)
+
+    Returns:
+    This function does not return anything explicitly.
+    """
 
     with open(config_file, "r") as file:
         config = yaml.safe_load(file)
@@ -37,6 +50,12 @@ def ingest_data(config_file, email, maxmessages, test_mode=False):
     for blob in tqdm(blobs):
 
         if "image" in blob.content_type:
+
+            # Skip adding the reduced image if it already exists.
+            base, ext = os.path.splitext(os.path.basename(blob.name))
+            if ext == "webp":
+                continue
+
             msg = {
                 "database_name": db_name,
                 "customer_table_name": photosapp.CUSTOMERTABLE,
