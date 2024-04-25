@@ -216,7 +216,7 @@ def insert_into_db(message, exif_data, time_stamp, webp_name):
         .collection(tl_name)
         .document(str(data_record["uuid"]))
     )
-    doc_ref.update(data_record, merge=True)
+    doc_ref.set(data_record, merge=True)
 
 
 def log_message(msg_dict):
