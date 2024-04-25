@@ -48,8 +48,9 @@ const Hit = ({ hit }) => {
   const [imageUrl, setImageUrl] = useState('');
 
   useEffect(() => {
+    console.log(hit);
     // Assume bucket_name is available or predefined if not part of hit
-    fetchSignedUrls(hit.bucket_name, [hit.blob_name])
+    fetchSignedUrls(hit.bucket_name, [hit.rr_img])
       .then(signedUrls => {
         if (signedUrls.length > 0) {
           setImageUrl(signedUrls[0].url);  // Assuming signedUrls is an array with url property
@@ -59,11 +60,11 @@ const Hit = ({ hit }) => {
         console.error('Error fetching signed URL:', error);
         setImageUrl('/path/to/default/image.jpg'); // Fallback image
       });
-  }, [hit.blob_name, hit.bucket_name]);
+  }, [hit.rr_img, hit.bucket_name]);
 
   return (
     <div>
-      {imageUrl && <img src={imageUrl} alt={hit.blob_name} />}
+      {imageUrl && <img src={imageUrl} alt={hit.rr_img} />}
       <div>
         <Highlight attribute="caption" hit={hit} tagName="mark" />
       </div>
@@ -73,7 +74,7 @@ const Hit = ({ hit }) => {
 
 export default function SearchInterface() {
   return (
-    <InstantSearch searchClient={searchClient} indexName="images">
+    <InstantSearch searchClient={searchClient} indexName={process.env.NEXT_PUBLIC_TYPESENSE_COLLECTION}>
       <CustomSearchBox />
       <Configure hitsPerPage={20} /> 
       <div>
