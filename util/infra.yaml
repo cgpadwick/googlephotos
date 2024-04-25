@@ -37,3 +37,6 @@ buckets:
 firestore:
   database_name: photos
   testdb_name: testdb
+typesense:
+  production_collection_name: images
+  test_collection_name: test_images
