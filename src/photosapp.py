@@ -7,6 +7,7 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
 
+from google.cloud import firestore_v1
 from google.cloud import pubsub_v1
 from google.oauth2 import service_account
 from google.cloud import storage
@@ -101,13 +102,15 @@ class DatabaseHelper(object):
 
     def check_unique_email(self, email):
         """Check if the email is unique in the database."""
-        doc_ref = self.db.collection(CUSTOMERTABLE).where("email", "==", email).limit(1)
+        field_filter = firestore_v1.base_query.FieldFilter("email", "==", email)
+        doc_ref = self.db.collection(CUSTOMERTABLE).where(filter=field_filter).limit(1)
         docs = doc_ref.get()
         return len(docs) == 0
 
     def get_customer(self, email):
         """Retrieve a customer in the database."""
-        doc_ref = self.db.collection(CUSTOMERTABLE).where("email", "==", email).limit(1)
+        field_filter = firestore_v1.base_query.FieldFilter("email", "==", email)
+        doc_ref = self.db.collection(CUSTOMERTABLE).where(filter=field_filter).limit(1)
         docs = doc_ref.get()
         assert len(docs) == 1
         customer = docs[0].to_dict()
