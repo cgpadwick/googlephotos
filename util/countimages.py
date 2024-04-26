@@ -16,6 +16,18 @@ if __name__ == "__main__":
         type=Path,
         help="path to the yaml config file",
     )
+    parser.add_argument(
+        "--bucket",
+        required=True,
+        type=str,
+        help="name of the bucket to count images in",
+    )
+    parser.add_argument(
+        "--print",
+        required=False,
+        action="store_true",
+        help="print the blob names found for each blob in the bucket",
+    )
 
     args = parser.parse_args()
     with open(args.configfile, "r") as file:
@@ -27,7 +39,7 @@ if __name__ == "__main__":
         creds_path
     )
     storage_client = storage.Client(credentials=source_credentials)
-    bucket = storage_client.get_bucket(config["buckets"]["main_bucket"]["name"])
+    bucket = storage_client.get_bucket(args.bucket)
     blobs = bucket.list_blobs()
 
     # Iterate through the blobs and count the number of images.
@@ -35,6 +47,8 @@ if __name__ == "__main__":
     for blob in tqdm(blobs):
 
         if "image" in blob.content_type:
+            if args.print:
+                print(blob.name)
             num_images += 1
 
-    print(f"Number of images found in bucket: {num_images}")
+    print(f"\n\nNumber of images found in bucket: {num_images}\n\n")
