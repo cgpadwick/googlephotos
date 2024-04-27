@@ -83,15 +83,15 @@ def dedup_database_records(config_file, email, test_mode=False):
     blob_names_to_process = []
     for img_ref in tqdm(image_list):
         blob_names_to_process.append(img_ref.to_dict()["blob_name"])
-    print(f"\n\nFound {len(blob_names_to_process)} UNIQUE blob_names to dedup.\n\n")
 
     # Make sure that the blob names are unique otherwise we can run into weird
     # race conditions in the threads (e.g two theads trying to dedup the same
     # blob name.)
     blob_names_to_process = list(set(blob_names_to_process))
+    print(f"\n\nFound {len(blob_names_to_process)} UNIQUE blob_names to dedup.\n\n")
 
     print("\n\nDeduping the database...\n\n")
-    with multiprocessing.Pool(processes=multiprocessing.cpu_count() // 2) as pool:
+    with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
         results = list(
             tqdm(
                 pool.imap(
