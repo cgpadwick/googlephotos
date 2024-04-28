@@ -3,7 +3,7 @@ from datetime import datetime
 from io import BytesIO
 import json
 import os
-from PIL import Image, TiffImagePlugin
+from PIL import Image, ImageOps, TiffImagePlugin
 from PIL.ExifTags import TAGS
 import piexif
 from pillow_heif import register_heif_opener
@@ -14,22 +14,21 @@ import uuid
 import firebase_admin
 from firebase_admin import firestore
 
+from google.cloud import firestore_v1
 from google.cloud import storage
 from google.cloud import logging
 
 
-def generate_webp_image(bucket, blob, storage_client=None):
+def generate_webp_image(bucket, blob):
     """
-    Generates a resized version of an image in WebP format and uploads it to the bucket.
+    Generate a WebP image based on the input bucket and blob.
 
-    Parameters:
-    - bucket: The storage bucket where the image will be uploaded.
-    - blob: The image to be resized and converted.
-    - storage_client: Optional. The storage client to use. If not provided, a new client will be created.
+    Args:
+        bucket: The storage bucket where the image is located.
+        blob: The image blob to generate a WebP version from.
 
     Returns:
-    - If the WebP version of the image was successfully generated and uploaded, returns the new blob name.
-    - If the image already exists in WebP format, returns None.
+        str: The name of the generated WebP image if successful, None otherwise.
     """
 
     if "image" in blob.content_type:
@@ -39,28 +38,31 @@ def generate_webp_image(bucket, blob, storage_client=None):
         dir_name = os.path.dirname(blob.name)
         new_blob_name = os.path.join(dir_name, f"{base}.webp")
 
-        # Check and see if it exists or not.
-        if storage_client is None:
-            storage_client = storage.Client()
-        if not storage.Blob(bucket=bucket, name=new_blob_name).exists(storage_client):
+        # Delete the webp image if it exists.
+        webp_blob = bucket.get_blob(new_blob_name)
+        if webp_blob is not None:
+            webp_blob.delete()
 
-            # Generate a resized version of the image in webp format
-            # and upload it to the bucket.
-            register_heif_opener()  # Register the HEIF and HEIC support.
-            blob_data = blob.download_as_bytes()
-            img = Image.open(BytesIO(blob_data))
-            img = img.convert("RGB")  # Handle PNG RGBA format.
-            w, h = img.size
-            resize_factor = min(w, h) // 500
-            if resize_factor < 1:
-                resize_factor = 1
+        # Generate a resized version of the image in webp format
+        # and upload it to the bucket.
+        register_heif_opener()  # Register the HEIF and HEIC support.
+        blob_data = blob.download_as_bytes()
+        img = Image.open(BytesIO(blob_data))
 
-            bytes_buffer = BytesIO()
-            img.resize((w // resize_factor, h // resize_factor), Image.LANCZOS).save(
-                bytes_buffer, "WEBP"
-            )
-            del img
-            bucket.blob(new_blob_name).upload_from_string(bytes_buffer.getvalue())
+        # Fix orientation of webp images so original orientation is preserved.
+        img = ImageOps.exif_transpose(img)
+        img = img.convert("RGB")  # Handle PNG RGBA format.
+        w, h = img.size
+        resize_factor = min(w, h) // 500
+        if resize_factor < 1:
+            resize_factor = 1
+
+        bytes_buffer = BytesIO()
+        img.resize((w // resize_factor, h // resize_factor), Image.LANCZOS).save(
+            bytes_buffer, "WEBP"
+        )
+        del img
+        bucket.blob(new_blob_name).upload_from_string(bytes_buffer.getvalue())
 
         return new_blob_name
 
@@ -183,8 +185,20 @@ def get_photo_acquired_time(blob_name, exif_data):
     return default_timestamp
 
 
-def insert_into_db(message, exif_data, time_stamp, webp_name):
-    """Insert record into the database."""
+def upsert_into_db(message, exif_data, time_stamp, webp_name):
+    """
+    Upserts a data record into the database.
+
+    Args:
+        message (dict): A dictionary containing the necessary information
+            for upserting into the database.
+        exif_data (dict): A dictionary containing the EXIF data of the image.
+        time_stamp (datetime): The timestamp of the image acquisition.
+        webp_name (str): The name of the WebP image.
+
+    Returns:
+        None
+    """
 
     database_name = message.get("database_name")
     customer_table_name = message.get("customer_table_name")
@@ -193,30 +207,44 @@ def insert_into_db(message, exif_data, time_stamp, webp_name):
     blob_name = message.get("blob_name")
     user_id = message.get("user_id")
 
-    data_record = {
-        "blob_name": blob_name,
-        "bucket_name": bucket_name,
-        "acquisition_time": time_stamp.isoformat(),
-        "exif_data": exif_data,
-        "uuid": str(uuid.uuid4()),
-        "rr_img": webp_name,
-    }
-
-    # Convert any integer keys to strings.
-    data_record = json.loads(json.dumps(data_record))
-
     if not firebase_admin._apps:
         _ = firebase_admin.initialize_app()
 
+    # Check and see if the document already exists. If so, update it with
+    # the newly generated webp name.
     db = firestore.Client(database=database_name)
-
-    doc_ref = (
-        db.collection(customer_table_name)
-        .document(user_id)
-        .collection(tl_name)
-        .document(str(data_record["uuid"]))
+    field_filter = firestore_v1.base_query.FieldFilter("blob_name", "==", blob_name)
+    query = (
+        db.collection(f"{customer_table_name}/{user_id}/{tl_name}")
+        .where(filter=field_filter)
+        .limit(1)
     )
-    doc_ref.set(data_record, merge=True)
+
+    res = query.get()
+    if len(res) == 1:
+        res[0].reference.set({"rr_img": webp_name}, merge=True)
+        return
+    else:
+        # Add a new record.
+        data_record = {
+            "blob_name": blob_name,
+            "bucket_name": bucket_name,
+            "acquisition_time": time_stamp.isoformat(),
+            "exif_data": exif_data,
+            "uuid": str(uuid.uuid4()),
+            "rr_img": webp_name,
+        }
+
+        # Convert any integer keys to strings.
+        data_record = json.loads(json.dumps(data_record))
+
+        doc_ref = (
+            db.collection(customer_table_name)
+            .document(user_id)
+            .collection(tl_name)
+            .document(str(data_record["uuid"]))
+        )
+        doc_ref.set(data_record)
 
 
 def log_message(msg_dict):
@@ -241,10 +269,10 @@ def ingest_object(event, context):
         storage_client = storage.Client()
         bucket = storage_client.get_bucket(message.get("bucket_name"))
         blob = bucket.get_blob(message.get("blob_name"))
-        webp_name = generate_webp_image(bucket, blob, storage_client)
+        webp_name = generate_webp_image(bucket, blob)
         exif_data = get_exif_data(blob)
         time_stamp = get_photo_acquired_time(message["blob_name"], exif_data)
-        insert_into_db(message, exif_data, time_stamp, webp_name)
+        upsert_into_db(message, exif_data, time_stamp, webp_name)
 
         log_message(
             {
