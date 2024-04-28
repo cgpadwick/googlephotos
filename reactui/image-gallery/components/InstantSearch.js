@@ -76,7 +76,7 @@ export default function SearchInterface() {
   return (
     <InstantSearch searchClient={searchClient} indexName={process.env.NEXT_PUBLIC_TYPESENSE_COLLECTION}>
       <CustomSearchBox />
-      <Configure hitsPerPage={20} /> 
+      <Configure hitsPerPage={50} /> 
       <div>
         <Hits hitComponent={Hit} />
       </div>
