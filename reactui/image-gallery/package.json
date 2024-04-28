@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.24.4",
+    "@google-cloud/secret-manager": "^5.4.0",
     "next": "14.1.4",
     "react": "^18",
     "react-dom": "^18",

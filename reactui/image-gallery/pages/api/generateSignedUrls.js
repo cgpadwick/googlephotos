@@ -1,4 +1,5 @@
 import { Storage } from '@google-cloud/storage';
+import { getSecret } from './getSecrets';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -6,8 +7,9 @@ export default async function handler(req, res) {
   }
 
   try {
+    const credentials = await getSecret();
     const storage = new Storage({
-      projectId: 'cgp-project',
+      credentials: credentials,
     });
 
     const { bucketName, fileNames } = req.body; // Expect bucketName and an array of fileNames in the request body
