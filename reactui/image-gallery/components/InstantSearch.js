@@ -3,21 +3,41 @@ import { InstantSearch, Hits, Configure, connectSearchBox, Highlight, Pagination
 import TypesenseInstantSearchAdapter from 'typesense-instantsearch-adapter';
 import { fetchSignedUrls } from '../pages/image-gallery.js';
 
-// Initialize Typesense adapter
-const typesenseInstantsearchAdapter = new TypesenseInstantSearchAdapter({
-  server: {
-    apiKey: process.env.NEXT_PUBLIC_TYPESENSE_API_KEY,
-    nodes: [{
-      host: process.env.NEXT_PUBLIC_TYPESENSE_HOST,
-      port: '443',
-      protocol: 'https'
-    }],
-  },
-  additionalSearchParameters: {
-    queryBy: 'caption',
-  },
-});
-const searchClient = typesenseInstantsearchAdapter.searchClient;
+async function fetchTypesenseConfig() {
+  const response = await fetch('/api/typesenseConfig', {
+     method: 'POST',
+     headers: {
+       'Content-Type': 'application/json',
+     },
+     body: '',
+   });
+
+   if (!response.ok) {
+      throw new Error('Failed to fetch Typesense config');
+   }
+
+   return await response.json();
+}
+
+async function initializeTypesenseAdapter() {
+ const config = await fetchTypesenseConfig();
+
+ const adapter = new TypesenseInstantSearchAdapter({
+   server: {
+     apiKey: config.apiKey,
+     nodes: [{
+       host: config.host,
+       port: '443',
+       protocol: 'https',
+     }],
+   },
+   additionalSearchParameters: {
+     queryBy: 'caption',
+   },
+ });
+
+ return adapter.searchClient;
+}
 
 // Custom search box component
 const SearchBox = ({ refine }) => {
@@ -73,8 +93,26 @@ const Hit = ({ hit }) => {
 };
 
 export default function SearchInterface() {
+
+  const [searchClient, setSearchClient] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    initializeTypesenseAdapter()
+      .then(setSearchClient)
+      .catch(setError);
+  }, []);
+
+  if (error) {
+    return <div>Error initializing Typesense: {error.message}</div>;
+  }
+
+  if (!searchClient) {
+    return <div>Loading Typesense...</div>;
+  }
+
   return (
-    <InstantSearch searchClient={searchClient} indexName={process.env.NEXT_PUBLIC_TYPESENSE_COLLECTION}>
+    <InstantSearch searchClient={searchClient} indexName='images'>
       <CustomSearchBox />
       <Configure hitsPerPage={50} /> 
       <div>
