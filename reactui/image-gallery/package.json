@@ -11,6 +11,8 @@
   "dependencies": {
     "@babel/runtime": "^7.24.4",
     "@google-cloud/secret-manager": "^5.4.0",
+    "@google-cloud/storage": "^7.10.2",
+    "firebase": "^10.11.1",
     "next": "14.1.4",
     "react": "^18",
     "react-dom": "^18",

@@ -68,7 +68,7 @@ const Hit = ({ hit }) => {
   const [imageUrl, setImageUrl] = useState('');
 
   useEffect(() => {
-    console.log(hit);
+    //console.log(hit);
     // Assume bucket_name is available or predefined if not part of hit
     fetchSignedUrls(hit.bucket_name, [hit.rr_img])
       .then(signedUrls => {
